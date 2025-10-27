@@ -164,7 +164,7 @@ export function CsvTools<T>({ entityName, items, headers, onImport, onExportSucc
             </button>
              <button
                 onClick={handleExport}
-                className="bg-primary-100 dark:bg-primary-900/50 hover:bg-primary-200 dark:hover:bg-primary-900 text-primary-800 dark:text-primary-200 font-bold py-2 px-3 rounded-lg text-sm"
+                className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-3 rounded-lg text-sm"
             >
                 Exportar XLSX
             </button>

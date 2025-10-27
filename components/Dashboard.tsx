@@ -1,421 +1,343 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getNextPeriodToPay, generateSequentialId } from './utils';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from 'recharts';
+import { getNextPeriodToPay, generateSequentialId, generatePeriods, getStatusInfo } from './utils';
 import { IconDisplay } from './IconDisplay';
 import { useAuth } from '../contexts/AuthContext';
-import { PlannedExpense, Payment } from '../types';
-import { CloseIcon, WarningIcon, CurrencyDollarIcon } from './Icons';
+import { PlannedExpense, Payment, Concept } from '../types';
+import { ArrowUpIcon, ArrowDownIcon, BriefcaseIcon, ClockIcon, CurrencyDollarIcon, WarningIcon, CloseIcon, ChevronDownIcon } from './Icons';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+
 const months = [
-    { value: '01', label: 'Enero' }, { value: '02', label: 'Febrero' }, { value: '03', label: 'Marzo' },
-    { value: '04', label: 'Abril' }, { value: '05', label: 'Mayo' }, { value: '06', label: 'Junio' },
-    { value: '07', label: 'Julio' }, { value: '08', label: 'Agosto' }, { value: '09', label: 'Septiembre' },
-    { value: '10', label: 'Octubre' }, { value: '11', label: 'Noviembre' }, { value: '12', label: 'Diciembre' }
+    { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' }, { value: 2, label: 'Marzo' },
+    { value: 3, label: 'Abril' }, { value: 4, label: 'Mayo' }, { value: 5, label: 'Junio' },
+    { value: 6, label: 'Julio' }, { value: 7, label: 'Agosto' }, { value: 8, label: 'Septiembre' },
+    { value: 9, label: 'Octubre' }, { value: 10, label: 'Noviembre' }, { value: 11, label: 'Diciembre' }
 ];
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
-// Main Modal Component
-const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode, size?: 'lg' | '2xl' }> = ({ isOpen, onClose, title, children, size = '2xl' }) => {
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        if (isOpen) document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
+// Reusable GlassCard component
+const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+        {children}
+    </div>
+);
 
-    if (!isOpen) return null;
+const SummaryCard: React.FC<{ title: string; amount: number; icon: React.ReactNode; }> = ({ title, amount, icon }) => (
+    <GlassCard className="p-4">
+        <div className="flex items-center space-x-3">
+            <div className="bg-black/20 rounded-lg p-2">
+                {icon}
+            </div>
+            <div>
+                <p className="text-sm text-gray-300">{title}</p>
+                <p className="text-lg font-bold">{formatCurrency(amount)}</p>
+            </div>
+        </div>
+    </GlassCard>
+);
+
+const SavingsGoalChart: React.FC<{ goal: any }> = ({ goal }) => {
+    const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+    const data = [
+        { name: 'Progress', value: progress },
+        { name: 'Remaining', value: Math.max(0, 100 - progress) },
+    ];
+    const colors = ['#a78bfa', '#4ade80', '#1e1b4b']; // Adjusted colors to match image
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-            <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-${size} transform transition-all`}>
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                        <CloseIcon className="w-6 h-6" />
-                    </button>
-                </div>
-                <div className="p-6 max-h-[70vh] overflow-y-auto">{children}</div>
+        <div className="relative w-40 h-40 mx-auto">
+            <ResponsiveContainer>
+                <PieChart>
+                    <defs>
+                        <linearGradient id="progressGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#4ade80" />
+                        <stop offset="100%" stopColor="#a78bfa" />
+                        </linearGradient>
+                    </defs>
+                    <Pie
+                        data={data}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="70%"
+                        outerRadius="100%"
+                        startAngle={90}
+                        endAngle={-270}
+                        dataKey="value"
+                        stroke="none"
+                        cornerRadius={20}
+                    >
+                        <Cell fill="url(#progressGradient)" />
+                        <Cell fill="rgba(255, 255, 255, 0.1)" />
+                    </Pie>
+                </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-3xl font-bold">{Math.round(progress)}%</span>
             </div>
         </div>
     );
 };
 
-// Payment Modal
-const PaymentModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onSave: (amount: number, date: string) => void;
-    periodLabel: string;
-    remainingAmount: number;
-}> = ({ isOpen, onClose, onSave, periodLabel, remainingAmount }) => {
-    const todayISO = new Date().toISOString().split('T')[0];
-    const [amount, setAmount] = useState(remainingAmount > 0 ? remainingAmount : 0);
-    const [date, setDate] = useState(todayISO);
-    const [error, setError] = useState('');
-
-    useEffect(() => {
-        if (isOpen) {
-            setAmount(remainingAmount > 0 ? remainingAmount : 0);
-            setDate(todayISO);
-            setError('');
-        }
-    }, [isOpen, remainingAmount, todayISO]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        if (amount <= 0) {
-            setError('El monto debe ser mayor a 0.');
-            return;
-        }
-        if (amount > remainingAmount) {
-             setError(`El monto no puede ser mayor al restante (${formatCurrency(remainingAmount)}).`);
-            return;
-        }
-        onSave(amount, new Date(date).toISOString());
-    };
-
-    return (
-         <Modal isOpen={isOpen} onClose={onClose} title={`Registrar Abono para ${periodLabel}`} size="lg">
-             <form onSubmit={handleSubmit} className="space-y-4">
-                 <div>
-                    <label className="block text-sm font-medium">Monto a Pagar</label>
-                    <input 
-                        type="number"
-                        value={amount}
-                        onChange={e => setAmount(Number(e.target.value))}
-                        max={remainingAmount}
-                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm"
-                        required 
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Restante para este periodo: {formatCurrency(remainingAmount)}</p>
-                    {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-                 </div>
-                 <div>
-                    <label className="block text-sm font-medium">Fecha del Pago</label>
-                    <input 
-                        type="date"
-                        value={date}
-                        onChange={e => setDate(e.target.value)}
-                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm"
-                        required
-                    />
-                 </div>
-                 <div className="flex justify-end gap-4 pt-4">
-                    <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Abono</button>
-                </div>
-             </form>
-         </Modal>
-    )
-};
-
-
-interface DashboardProps {
-}
-
-const SummaryCard: React.FC<{ title: string; amount: number; color: string; onClick?: () => void; }> = ({ title, amount, color, onClick }) => (
-    <div 
-        className={`bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 ${color} ${onClick ? 'cursor-pointer hover:shadow-xl transition-shadow' : ''}`}
-        onClick={onClick}
-        onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
-        role={onClick ? 'button' : 'figure'}
-        tabIndex={onClick ? 0 : -1}
-    >
-        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</h3>
-        <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{formatCurrency(amount)}</p>
-    </div>
-);
-
-export const Dashboard: React.FC<DashboardProps> = () => {
-    const { appData: data, setData } = useAuth();
-    const navigate = useNavigate();
-    const [paymentModalInfo, setPaymentModalInfo] = useState<{ isOpen: boolean; expense: PlannedExpense | null; period: string; periodLabel: string; remaining: number; }>({ isOpen: false, expense: null, period: '', periodLabel: '', remaining: 0 });
-
-    if (!data) {
-        return <div>Cargando...</div>;
-    }
-
-    const summary = useMemo(() => {
-        const totalIncome = data.incomes.reduce((sum, income) => sum + income.amount, 0);
-        
-        const totalDailyExpenses = data.dailyExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-        
-        const totalPaidPlannedExpenses = data.plannedExpenses.reduce((sum, expense) => {
-            return sum + expense.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0);
-        }, 0);
-        
-        const totalExpenses = totalDailyExpenses + totalPaidPlannedExpenses;
-        
-        const availableBalance = totalIncome - totalExpenses;
-        
-        const pendingToPay = data.plannedExpenses.reduce((sum, expense) => {
-             const paidAmount = expense.payments.reduce((paymentSum, payment) => paymentSum + payment.amount, 0);
-             const totalDebt = expense.amountPerPeriod * expense.periods;
-             const remaining = totalDebt - paidAmount;
-             return sum + (remaining > 0 ? remaining : 0);
-        }, 0);
-
-        return { totalIncome, totalExpenses, availableBalance, pendingToPay };
-    }, [data]);
+const CategoryDonutChart: React.FC<{ data: { name: string, value: number, percent: number }[] }> = ({ data }) => {
+    const COLORS = ['#3b82f6', '#f59e0b', '#ec4899', '#10b981', '#8b5cf6', '#ef4444'];
     
-    const pendingDues = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        return data.plannedExpenses
-            .map(expense => {
-                const nextPeriodToPay = getNextPeriodToPay(expense);
-                if (!nextPeriodToPay) return null;
-
-                const [year, month] = nextPeriodToPay.period.split('-').map(Number);
-                
-                let dueMonth = month - 1;
-                let dueYear = year;
-                if (expense.cutOffDay > expense.dueDay) {
-                    dueMonth += 1;
-                    if (dueMonth > 11) {
-                        dueMonth = 0;
-                        dueYear += 1;
-                    }
-                }
-                const dueDate = new Date(dueYear, dueMonth, expense.dueDay);
-                dueDate.setHours(0, 0, 0, 0);
-                
-                const isOverdue = dueDate < today;
-
-                return { ...expense, nextPeriodToPay, dueDate, isOverdue };
-            })
-            .filter((expense): expense is NonNullable<typeof expense> => expense !== null)
-            .sort((a, b) => {
-                 if (a.isOverdue && !b.isOverdue) return -1;
-                 if (!a.isOverdue && b.isOverdue) return 1;
-                 return a.dueDate.getTime() - b.dueDate.getTime();
-            })
-            .slice(0, 5);
-    }, [data.plannedExpenses]);
-
-    const categorySpendingData = useMemo(() => {
-        const categoryMap = new Map<string, number>();
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-
-        data.dailyExpenses.forEach(expense => {
-            const expenseDate = new Date(expense.date);
-            if (expenseDate >= startOfMonth && expenseDate <= endOfMonth) {
-                const concept = data.concepts.find(c => c.id === expense.conceptId);
-                if (concept && concept.categoryId) {
-                    const categoryName = data.categories.find(cat => cat.id === concept.categoryId)?.name || 'Sin Categoría';
-                    categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + expense.amount);
-                }
-            }
-        });
-
-        data.plannedExpenses.forEach(expense => {
-            expense.payments.forEach(payment => {
-                const paymentDate = new Date(payment.date);
-                if (paymentDate >= startOfMonth && paymentDate <= endOfMonth) {
-                    const concept = data.concepts.find(c => c.id === expense.conceptId);
-                    if (concept && concept.categoryId) {
-                         const categoryName = data.categories.find(cat => cat.id === concept.categoryId)?.name || 'Sin Categoría';
-                         categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + payment.amount);
-                    }
-                }
-            });
-        });
-        
-        if (categoryMap.size === 0) {
-            return [];
-        }
-
-        return Array.from(categoryMap.entries()).map(([name, value]) => ({ name, value }));
-    }, [data.categories, data.concepts, data.dailyExpenses, data.plannedExpenses]);
-    
-    const handleOpenPaymentModal = (expense: PlannedExpense) => {
-        const nextPeriod = getNextPeriodToPay(expense);
-        if (!nextPeriod) return;
-
-        const paidInPeriod = expense.payments
-            .filter(p => p.period === nextPeriod.period)
-            .reduce((sum, p) => sum + p.amount, 0);
-        
-        const remaining = expense.amountPerPeriod - paidInPeriod;
-        const [year, monthVal] = nextPeriod.period.split('-').map(Number);
-        const periodLabel = `${months[monthVal - 1].label} ${year}`;
-
-        setPaymentModalInfo({
-            isOpen: true,
-            expense,
-            period: nextPeriod.period,
-            periodLabel,
-            remaining,
-        });
-    };
-    
-    const handleAddPayment = (amount: number, date: string) => {
-        const { expense, period } = paymentModalInfo;
-        if (!expense || !period) return;
-
-        const allPayments = data.plannedExpenses.flatMap(pe => pe.payments);
-
-        const newPayment: Payment = {
-            id: generateSequentialId('PA', allPayments),
-            amount,
-            date,
-            period,
-        };
-
-        const updatedPlannedExpenses = data.plannedExpenses.map(pe =>
-            pe.id === expense.id
-                ? { ...pe, payments: [...pe.payments, newPayment] }
-                : pe
-        );
-
-        setData({ ...data, plannedExpenses: updatedPlannedExpenses });
-
-        setPaymentModalInfo({ isOpen: false, expense: null, period: '', periodLabel: '', remaining: 0 });
-    };
-
     const CustomTooltip = ({ active, payload }: any) => {
         if (active && payload && payload.length) {
             return (
-            <div className="p-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow-lg">
-                <p className="label">{`${payload[0].name} : ${formatCurrency(payload[0].value)}`}</p>
-            </div>
+                <div className="p-2 bg-black/50 backdrop-blur-sm border border-white/20 rounded-md shadow-lg text-white">
+                    <p className="label">{`${payload[0].name} : ${formatCurrency(payload[0].value)} (${(payload[0].payload.percent * 100).toFixed(0)}%)`}</p>
+                </div>
             );
         }
         return null;
     };
-
+    
+    const renderLegend = (props: any) => {
+        const { payload } = props;
+        return (
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 text-xs">
+                {payload.map((entry: any, index: number) => (
+                    <div key={`item-${index}`} className="flex items-center space-x-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                        <span>{entry.value} ({(entry.payload.percent * 100).toFixed(0)}%)</span>
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     return (
-        <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h1>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <SummaryCard title="Ingresos Totales" amount={summary.totalIncome} color="border-green-500" onClick={() => navigate('/reports', { state: { filter: 'incomes' } })} />
-                <SummaryCard title="Gastos Totales" amount={summary.totalExpenses} color="border-red-500" onClick={() => navigate('/reports', { state: { filter: 'expenses' } })} />
-                <SummaryCard title="Saldo Disponible" amount={summary.availableBalance} color="border-primary-500" />
-                <SummaryCard title="Saldo Pendiente" amount={summary.pendingToPay} color="border-yellow-500" onClick={() => navigate('/planned-expenses')} />
-            </div>
+        <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+                <Pie
+                    data={data}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    paddingAngle={5}
+                    dataKey="value"
+                    nameKey="name"
+                    cornerRadius={10}
+                >
+                    {data.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                </Pie>
+                <RechartsTooltip content={<CustomTooltip />} />
+                <Legend content={renderLegend} />
+            </PieChart>
+        </ResponsiveContainer>
+    );
+}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                    <h3 className="font-bold text-xl mb-4 text-gray-800 dark:text-white">Progreso de Metas de Ahorro</h3>
-                    <div className="space-y-2">
-                        {data.savingsGoals.length > 0 ? data.savingsGoals.map(goal => {
-                            const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
-                            const action = () => navigate('/savings-goals', { state: { openGoalId: goal.id } });
-                            return (
-                                <div 
-                                    key={goal.id} 
-                                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 p-2 -m-2 rounded-lg transition-colors"
-                                    onClick={action}
-                                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && action()}
-                                    role="button"
-                                    tabIndex={0}
-                                >
-                                    <div className="flex justify-between items-center mb-1">
-                                        <div className="flex items-center gap-2">
-                                            <IconDisplay icon={goal.icon} iconColor={goal.iconColor} className="w-5 h-5"/>
-                                            <p className="font-medium text-sm text-gray-800 dark:text-white">{goal.name}</p>
-                                        </div>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-semibold">{Math.round(progress)}%</p>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                                        <div className="bg-primary-600 h-2.5 rounded-full" style={{ width: `${Math.min(progress, 100)}%` }}></div>
-                                    </div>
-                                     <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                        <span>{formatCurrency(goal.currentAmount)}</span>
-                                        <span>{formatCurrency(goal.targetAmount)}</span>
-                                    </div>
-                                </div>
-                            )
-                        }) : (
-                            <p className="text-gray-500 dark:text-gray-400 text-center py-4">Aún no tienes metas de ahorro.</p>
-                        )}
+interface DueExpense extends PlannedExpense {
+    concept: Concept | undefined;
+    amountForPeriod: number;
+    paidInPeriod: number;
+    status: ReturnType<typeof getStatusInfo>;
+    dueDate: Date;
+    duePeriod: string;
+}
+
+export const Dashboard: React.FC = () => {
+    const { appData: data, setData } = useAuth();
+    const navigate = useNavigate();
+    
+    const today = new Date();
+    const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+    const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+    const [expandedDueId, setExpandedDueId] = useState<string | null>(null);
+    
+    const currentDateLabel = new Date(selectedYear, selectedMonth).toLocaleDateString('es-MX', { month: 'long', year: 'numeric'});
+
+    if (!data) {
+        return <div className="text-white text-center">Cargando...</div>;
+    }
+
+    const { summary, pendingDues, categorySpendingData, firstSavingsGoal } = useMemo(() => {
+        const startOfMonth = new Date(selectedYear, selectedMonth, 1);
+        const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+
+        const periodIncome = data.incomes
+            .filter(i => { const d = new Date(i.date); return d >= startOfMonth && d <= endOfMonth; })
+            .reduce((sum, i) => sum + i.amount, 0);
+
+        const periodDailyExpenses = data.dailyExpenses
+            .filter(e => { const d = new Date(e.date); return d >= startOfMonth && d <= endOfMonth; })
+            .reduce((sum, e) => sum + e.amount, 0);
+
+        const periodPaidPlannedExpenses = data.plannedExpenses.reduce((sum, expense) => sum + expense.payments
+                .filter(p => { const d = new Date(p.date); return d >= startOfMonth && d <= endOfMonth; })
+                .reduce((pSum, p) => pSum + p.amount, 0), 0);
+
+        const periodExpenses = periodDailyExpenses + periodPaidPlannedExpenses;
+        const periodBalance = periodIncome - periodExpenses;
+
+        const periodStr = `${selectedYear}-${(selectedMonth + 1).toString().padStart(2, '0')}`;
+        const totalPlannedForMonth = data.plannedExpenses.reduce((sum, pe) => {
+            return sum + (generatePeriods(pe).includes(periodStr) ? (pe.periodOverrides?.[periodStr] ?? pe.amountPerPeriod) : 0);
+        }, 0);
+
+        const paidOnPlannedForMonth = data.plannedExpenses.reduce((sum, pe) => {
+            return sum + pe.payments
+                .filter(p => p.period === periodStr)
+                .reduce((pSum, p) => pSum + p.amount, 0);
+        }, 0);
+        
+        const pendingInPeriod = totalPlannedForMonth - paidOnPlannedForMonth;
+
+        const summary = { periodIncome, periodExpenses, periodBalance, pendingInPeriod };
+
+        const dues: DueExpense[] = [];
+        data.plannedExpenses.forEach(expense => {
+            const paymentsByPeriod = new Map<string, number>();
+            expense.payments.forEach(p => {
+                paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + p.amount);
+            });
+
+            if (generatePeriods(expense).includes(periodStr)) {
+                const paidInPeriod = paymentsByPeriod.get(periodStr) || 0;
+                const amountForPeriod = expense.periodOverrides?.[periodStr] ?? expense.amountPerPeriod;
+                
+                if (paidInPeriod < amountForPeriod) {
+                    const concept = data.concepts.find(c => c.id === expense.conceptId);
+                    const status = getStatusInfo(expense, getNextPeriodToPay(expense));
+                    const dueDate = new Date(selectedYear, selectedMonth, expense.dueDay);
+                    dues.push({ ...expense, concept, amountForPeriod, paidInPeriod, status, dueDate, duePeriod: periodStr });
+                }
+            }
+        });
+
+        // Category Spending
+        let totalSpendingThisMonth = 0;
+        const categoryMap = new Map<string, number>();
+        [...data.dailyExpenses, ...data.plannedExpenses.flatMap(pe => pe.payments)].forEach(transaction => {
+            const tDate = new Date(transaction.date);
+            if (tDate >= startOfMonth && tDate <= endOfMonth) {
+                totalSpendingThisMonth += transaction.amount;
+                const conceptId = 'conceptId' in transaction ? transaction.conceptId : data.plannedExpenses.find(pe => pe.payments.some(p => p.id === transaction.id))?.conceptId;
+                if(conceptId) {
+                    const concept = data.concepts.find(c => c.id === conceptId);
+                    if (concept?.categoryId) {
+                        const categoryName = data.categories.find(cat => cat.id === concept.categoryId)?.name || 'Sin Categoría';
+                        categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + transaction.amount);
+                    }
+                }
+            }
+        });
+        const spendingData = Array.from(categoryMap.entries())
+            .map(([name, value]) => ({ name, value, percent: totalSpendingThisMonth > 0 ? value / totalSpendingThisMonth : 0 }))
+            .sort((a, b) => b.value - a.value);
+
+        return {
+            summary,
+            pendingDues: dues.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime()),
+            categorySpendingData: spendingData,
+            firstSavingsGoal: data.savingsGoals.length > 0 ? data.savingsGoals[0] : null
+        };
+    }, [data, selectedMonth, selectedYear]);
+    
+    return (
+        <div className="space-y-6">
+            <GlassCard className="p-6">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-4xl font-bold">Dashboard</h1>
+                        <p className="text-gray-300 opacity-80">{currentDateLabel.replace(currentDateLabel.split(' ')[0], currentDateLabel.split(' ')[0].charAt(0).toUpperCase() + currentDateLabel.split(' ')[0].slice(1))}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                             <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="bg-black/20 border border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
+                                {months.map((m, i) => <option key={i} value={i}>{m.label}</option>)}
+                            </select>
+                            <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="bg-black/20 border border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
+                                {years.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm text-gray-300 opacity-80">Balance del Periodo</p>
+                        <p className="text-4xl font-bold">{formatCurrency(summary.periodBalance)}</p>
                     </div>
                 </div>
+            </GlassCard>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <SummaryCard title="Ingresos del Periodo" amount={summary.periodIncome} icon={<ArrowUpIcon className="w-6 h-6 text-green-400" />} />
+                <SummaryCard title="Gastos del Periodo" amount={summary.periodExpenses} icon={<ArrowDownIcon className="w-6 h-6 text-red-400" />} />
+                <SummaryCard title="Balance del Periodo" amount={summary.periodBalance} icon={<BriefcaseIcon className="w-6 h-6 text-blue-400" />} />
+                <SummaryCard title="Pendiente en el Periodo" amount={summary.pendingInPeriod} icon={<ClockIcon className="w-6 h-6 text-yellow-400" />} />
+            </div>
 
-                <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                    <h3 className="font-bold text-xl mb-4 text-gray-800 dark:text-white">Vencimientos Próximos y Vencidos</h3>
-                    <div className="space-y-1">
-                        {pendingDues.length > 0 ? (
-                            pendingDues.map(due => {
-                                const concept = data.concepts.find(c => c.id === due.conceptId);
-                                const action = () => navigate('/planned-expenses', { state: { openExpenseId: due.id } });
-                                return (
-                                    <div 
-                                        key={due.id} 
-                                        className="flex justify-between items-center p-2 -m-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
-                                        onClick={action}
-                                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && action()}
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-label={`Ver detalles de ${concept?.name}`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <IconDisplay icon={due.icon} iconColor={due.iconColor} className="w-8 h-8 flex-shrink-0" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <GlassCard className="p-6 flex flex-col">
+                    <h3 className="font-bold text-xl mb-4">Metas de Ahorro</h3>
+                    {firstSavingsGoal ? (
+                        <div className="flex-grow flex flex-col items-center justify-center">
+                            <SavingsGoalChart goal={firstSavingsGoal} />
+                            <p className="mt-4 font-semibold">{firstSavingsGoal.name}</p>
+                            <p className="text-sm text-gray-300 opacity-80">{formatCurrency(firstSavingsGoal.currentAmount)} / {formatCurrency(firstSavingsGoal.targetAmount)}</p>
+                        </div>
+                    ) : (
+                        <div className="text-center text-gray-400 my-auto flex-grow flex flex-col justify-center items-center">No hay metas de ahorro.</div>
+                    )}
+                </GlassCard>
+                
+                 <GlassCard className="p-6">
+                    <h3 className="font-bold text-xl mb-4">Vencimientos Próximos</h3>
+                    <div className="space-y-2">
+                        {pendingDues.length > 0 ? pendingDues.map(due => {
+                            const isExpanded = expandedDueId === due.id;
+                            return (
+                                <div key={due.id} className="bg-black/20 rounded-lg p-2">
+                                    <div className="flex justify-between items-center cursor-pointer" onClick={() => setExpandedDueId(isExpanded ? null : due.id)}>
+                                        <div className="flex items-center space-x-3">
+                                            <IconDisplay icon={due.icon} iconColor={due.iconColor} className="w-5 h-5"/>
                                             <div>
-                                                <p className="font-medium text-gray-800 dark:text-white">{concept?.name || 'Gasto'}</p>
-                                                <p className={`text-sm ${due.isOverdue ? 'text-red-500 font-semibold' : 'text-gray-500 dark:text-gray-400'}`}>
-                                                    {due.isOverdue ? 'Venció' : 'Vence'}: {due.dueDate.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                </p>
+                                                <p className={`font-medium text-sm ${due.status.text === 'Vencido' ? 'text-red-400' : ''}`}>{due.concept?.name || 'Gasto'}</p>
+                                                <p className="text-xs text-gray-400">Vence: {due.dueDate.toLocaleDateString('es-MX', {day: '2-digit', month: 'short'})}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <p className="font-semibold text-gray-900 dark:text-white">{formatCurrency(due.amountPerPeriod)}</p>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleOpenPaymentModal(due);
-                                                }}
-                                                className="p-1.5 rounded-md bg-green-100 hover:bg-green-200 dark:bg-green-900/50 dark:hover:bg-green-900 text-green-700 dark:text-green-200 transition"
-                                                title={`Abonar a ${concept?.name}`}
-                                                aria-label={`Abonar a ${concept?.name}`}
-                                            >
-                                                <CurrencyDollarIcon className="w-5 h-5"/>
-                                            </button>
+                                            <span className="text-sm font-semibold">{formatCurrency(due.amountForPeriod - due.paidInPeriod)}</span>
+                                            <ChevronDownIcon className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                                         </div>
                                     </div>
-                                )
-                            })
-                        ) : (
-                            <p className="text-gray-500 dark:text-gray-400 text-center py-4">¡Todo al día! No hay vencimientos pendientes.</p>
+                                    {isExpanded && (
+                                        <div className="mt-2 pt-2 border-t border-white/10 text-xs">
+                                            <p className="font-semibold mb-1">Pagos realizados ({due.payments.length})</p>
+                                            {due.payments.length > 0 ? (
+                                                <ul className="space-y-1 max-h-24 overflow-y-auto pr-2">
+                                                   {due.payments.map(p => (
+                                                        <li key={p.id} className="flex justify-between items-center text-gray-300">
+                                                           <span>{p.period}: {new Date(p.date).toLocaleDateString()}</span>
+                                                           <span className="font-semibold">{formatCurrency(p.amount)}</span>
+                                                        </li>
+                                                   ))}
+                                                </ul>
+                                            ) : <p className="text-gray-400 italic">No hay pagos registrados.</p>}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }) : (
+                            <div className="text-center text-gray-400 my-auto h-full flex flex-col justify-center items-center">¡Todo al día en este periodo!</div>
                         )}
                     </div>
-                </div>
-                
-                <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                    <h3 className="font-bold text-xl mb-4 text-gray-800 dark:text-white">Gastos del Mes por Categoría</h3>
-                    <div style={{ width: '100%', height: 300 }}>
-                        {categorySpendingData.length > 0 ? (
-                            <ResponsiveContainer>
-                                <BarChart data={categorySpendingData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                                    <XAxis type="number" tickFormatter={(value) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', notation: 'compact' }).format(value as number)} />
-                                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                                    <Tooltip content={<CustomTooltip />} />
-                                    <Bar dataKey="value" name="Gastos" fill="var(--color-primary-500)" barSize={20} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                                No hay datos de gastos para el mes actual.
-                            </div>
-                        )}
-                    </div>
-                </div>
+                </GlassCard>
+
+                <GlassCard className="p-6">
+                    <h3 className="font-bold text-xl mb-4">Categorías</h3>
+                    {categorySpendingData.length > 0 ? (
+                        <CategoryDonutChart data={categorySpendingData} />
+                    ) : (
+                        <div className="text-center text-gray-400 my-auto flex-grow flex flex-col justify-center items-center">No hay gastos este mes.</div>
+                    )}
+                </GlassCard>
             </div>
-            <PaymentModal
-                isOpen={paymentModalInfo.isOpen}
-                onClose={() => setPaymentModalInfo({ isOpen: false, expense: null, period: '', periodLabel: '', remaining: 0 })}
-                onSave={handleAddPayment}
-                periodLabel={paymentModalInfo.periodLabel}
-                remainingAmount={paymentModalInfo.remaining}
-            />
         </div>
     );
 };

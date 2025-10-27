@@ -26,16 +26,16 @@ export const Login: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+        <div className="flex flex-col justify-center items-center min-h-screen p-4">
              <div className="flex justify-center items-center mb-6">
-                <WalletIcon className="h-12 w-12 text-primary-600" />
-                <h1 className="text-3xl font-bold ml-3 text-gray-800 dark:text-white">iWallet</h1>
+                <WalletIcon className="h-12 w-12 text-primary-400" />
+                <h1 className="text-3xl font-bold ml-3 text-white">iWallet</h1>
             </div>
 
-            <div className="w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 text-center">
+            <div className="w-full max-w-sm bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl p-8 text-center text-white">
                  <img src={`https://i.pravatar.cc/80?u=${userProfile?.email}`} alt="Avatar" className="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-primary-500/50" />
                  <h2 className="text-xl font-bold mb-2">¡Hola, {userProfile?.username}!</h2>
-                 <p className="text-gray-500 dark:text-gray-400 mb-6">Ingresa tu PIN para continuar</p>
+                 <p className="text-gray-300 mb-6">Ingresa tu PIN para continuar</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="relative">
                         <input
@@ -51,19 +51,19 @@ export const Login: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setShowPin(!showPin)}
-                            className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-500"
+                            className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400"
                             aria-label={showPin ? 'Ocultar PIN' : 'Mostrar PIN'}
                         >
                             {showPin ? <EyeSlashIcon className="h-6 w-6" /> : <EyeIcon className="h-6 w-6" />}
                         </button>
                     </div>
-                    {error && <p className="text-red-500 text-sm">{error}</p>}
+                    {error && <p className="text-red-400 text-sm">{error}</p>}
                     <button type="submit" disabled={isLoading} className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-4 rounded-lg transition disabled:bg-primary-400">
                         {isLoading ? 'Verificando...' : 'Desbloquear'}
                     </button>
                 </form>
                  <div className="mt-6">
-                    <Link to="/recover" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+                    <Link to="/recover" className="text-sm text-primary-400 hover:underline">
                         ¿Olvidaste tu PIN?
                     </Link>
                 </div>

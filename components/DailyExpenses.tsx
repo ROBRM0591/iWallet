@@ -1,11 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { DailyExpense, Concept, MovementTypeName } from '../types';
 import { generateSequentialId } from './utils';
-import { CsvTools, CsvHeader } from './CsvTools';
-import { DeleteIcon, WarningIcon, CheckCircleIcon, CurrencyDollarIcon, PlusIcon } from './Icons';
+import { DeleteIcon, WarningIcon, CheckCircleIcon } from './Icons';
+import { CalendarGrid } from './CalendarGrid';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+
+const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+    <div className={`bg-black/20 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+        {children}
+    </div>
+);
 
 const ConfirmationModal: React.FC<{
     isOpen: boolean;
@@ -26,19 +32,19 @@ const ConfirmationModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50">
-                    <WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" />
+            <div className="bg-gray-800 border border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-white">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/50">
+                    <WarningIcon className="h-6 w-6 text-red-300" />
                 </div>
-                <h3 className="text-lg leading-6 font-bold text-gray-900 dark:text-white mt-4">{title}</h3>
+                <h3 className="text-lg leading-6 font-bold mt-4">{title}</h3>
                 <div className="mt-2">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+                    <p className="text-sm text-gray-400">{message}</p>
                 </div>
                 <div className="mt-6 flex justify-center gap-4">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition"
+                        className="bg-gray-600 hover:bg-gray-500 text-gray-200 font-bold py-2 px-4 rounded-lg transition"
                     >
                         Cancelar
                     </button>
@@ -77,15 +83,15 @@ const SuccessToast: React.FC<{
             }`}
         >
             {isOpen && (
-                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex items-start gap-4 ring-1 ring-black ring-opacity-5">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
+                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center">
+                       <CheckCircleIcon className="h-6 w-6 text-green-300" />
                     </div>
                     <div className="flex-grow">
-                        <p className="font-bold text-gray-900 dark:text-white">{title}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+                        <p className="font-bold">{title}</p>
+                        <p className="text-sm text-gray-300">{message}</p>
                     </div>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">&times;</button>
+                     <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
                 </div>
             )}
         </div>
@@ -94,45 +100,44 @@ const SuccessToast: React.FC<{
 
 export const DailyExpenses: React.FC = () => {
     const { appData: data, setData } = useAuth();
-    const todayISO = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayISO = today.toISOString().split('T')[0];
+    
     const [formState, setFormState] = useState({ conceptId: '', amount: 0, date: todayISO });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDate, setSelectedDate] = useState<Date | null>(today);
+    const [calendarDate, setCalendarDate] = useState(new Date());
 
-    if (!data) return <div>Cargando...</div>;
+    useEffect(() => {
+        if (selectedDate) {
+            setFormState(prev => ({...prev, date: selectedDate.toISOString().split('T')[0]}));
+        }
+    }, [selectedDate]);
+
+    if (!data) return <div className="text-white">Cargando...</div>;
 
     const movGastoId = useMemo(() => data.movementTypes.find(m => m.name === MovementTypeName.GASTO)?.id, [data.movementTypes]);
-    const variableCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Variable')?.id, [data.costTypes]);
+    const diarioCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Diario')?.id, [data.costTypes]);
     const expenseConcepts = useMemo(() => {
-        return data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === variableCostTypeId);
-    }, [data.concepts, movGastoId, variableCostTypeId]);
+        return data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === diarioCostTypeId);
+    }, [data.concepts, movGastoId, diarioCostTypeId]);
 
-    const { monthlyTotal, filteredExpenses } = useMemo(() => {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const { expensesByDate } = useMemo(() => {
+        const expenseMap = new Map<string, DailyExpense[]>();
+        
+        data.dailyExpenses.forEach(expense => {
+            const expenseDate = new Date(expense.date);
+            const dateKey = expenseDate.toISOString().split('T')[0];
 
-        let total = 0;
-        const filtered = data.dailyExpenses
-            .map(expense => {
-                const concept = data.concepts.find(c => c.id === expense.conceptId);
-                const category = data.categories.find(cat => cat.id === concept?.categoryId)?.name || 'Sin Categoría';
-                return { ...expense, conceptName: concept?.name || 'N/A', categoryName: category };
-            })
-            .filter(expense => {
-                const expenseDate = new Date(expense.date);
-                if (expenseDate >= startOfMonth && expenseDate <= endOfMonth) {
-                    total += expense.amount;
-                }
-                const term = searchTerm.toLowerCase();
-                return !term || expense.conceptName.toLowerCase().includes(term) || expense.categoryName.toLowerCase().includes(term);
-            })
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        return { monthlyTotal: total, filteredExpenses: filtered };
-    }, [data.dailyExpenses, data.concepts, data.categories, searchTerm]);
+            if (!expenseMap.has(dateKey)) expenseMap.set(dateKey, []);
+            expenseMap.get(dateKey)!.push(expense);
+        });
+        
+        return { expensesByDate: expenseMap };
+    }, [data.dailyExpenses]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -152,7 +157,7 @@ export const DailyExpenses: React.FC = () => {
             date: new Date(formState.date).toISOString()
         };
         setData({ ...data, dailyExpenses: [...data.dailyExpenses, newExpense] });
-        setFormState({ conceptId: '', amount: 0, date: todayISO });
+        setFormState({ conceptId: '', amount: 0, date: formState.date });
         setErrors({});
         setSuccessInfo({ title: 'Éxito', message: 'Gasto diario registrado correctamente.' });
     };
@@ -166,121 +171,84 @@ export const DailyExpenses: React.FC = () => {
         setData({ ...data, dailyExpenses: data.dailyExpenses.filter(e => e.id !== deleteId) });
         setDeleteId(null);
     };
-    
-    const handleImport = (importedData: any[]) => {
-        if (Array.isArray(importedData)) {
-            const typedData = importedData.map(d => ({
-                ...d,
-                amount: Number(d.amount),
-            })) as DailyExpense[];
-            setData({ ...data, dailyExpenses: typedData });
-             setSuccessInfo({
-                title: 'Importación Exitosa',
-                message: `${typedData.length} gastos diarios importados con éxito.`
-            });
-        } else {
-             alert('Error: El archivo CSV no tiene el formato correcto para gastos diarios.');
-        }
-    };
-    
-    const headers: CsvHeader<DailyExpense>[] = [
-        { key: 'id', label: 'ID' },
-        { key: 'conceptId', label: 'ID Concepto' },
-        { key: 'amount', label: 'Monto' },
-        { key: 'date', label: 'Fecha (ISO)' },
-    ];
+
+    const renderDayCell = useCallback((date: Date) => {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        date.setHours(0,0,0,0);
+
+        const dateKey = date.toISOString().split('T')[0];
+        const hasExpenses = expensesByDate.has(dateKey);
+        
+        const isSelected = selectedDate ? date.getTime() === selectedDate.getTime() : false;
+        const isToday = date.getTime() === today.getTime();
+
+        let cellClass = "relative flex flex-col items-center justify-center h-20 w-full rounded-lg cursor-pointer transition-colors hover:bg-white/10";
+        if (isSelected) cellClass += " bg-primary-700/80";
+        else if (isToday) cellClass += " ring-2 ring-primary-500";
+        
+        return (
+            <div className={cellClass}>
+                <span>{date.getDate()}</span>
+                {hasExpenses && <div className="absolute bottom-2 w-2 h-2 rounded-full bg-red-500"></div>}
+            </div>
+        );
+    }, [selectedDate, expensesByDate]);
+
+    const selectedDayExpenses = useMemo(() => {
+        if (!selectedDate) return [];
+        const dateKey = selectedDate.toISOString().split('T')[0];
+        return expensesByDate.get(dateKey) || [];
+    }, [selectedDate, expensesByDate]);
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Gastos Diarios</h1>
+            <h1 className="text-3xl font-bold text-white">Gastos Diarios</h1>
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                    <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white flex items-center gap-2">
-                        <PlusIcon className="w-6 h-6" />
-                        Agregar Gasto
-                    </h2>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <CalendarGrid 
+                        currentDate={calendarDate}
+                        onDateClick={(date) => setSelectedDate(date)}
+                        renderDay={renderDayCell}
+                        onPrevMonth={() => setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                        onNextMonth={() => setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                    />
+                </div>
+
+                <GlassCard className="p-4 flex flex-col">
+                    <h3 className="text-lg font-bold mb-4">{selectedDate ? selectedDate.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long'}) : 'Selecciona un día'}</h3>
+                    <div className="flex-grow overflow-y-auto pr-2 space-y-2 mb-4">
+                        {selectedDayExpenses.length > 0 ? selectedDayExpenses.map(exp => (
+                            <div key={exp.id} className="p-2 bg-black/20 rounded-lg flex justify-between items-center">
+                                <span className="text-sm font-medium">{expenseConcepts.find(c => c.id === exp.conceptId)?.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-red-400">{formatCurrency(exp.amount)}</span>
+                                    <button onClick={() => handleDelete(exp.id)} className="text-gray-500 hover:text-red-400"><DeleteIcon className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                        )) : <p className="text-gray-400 text-center text-sm pt-4">No hay gastos para este día.</p>}
+                    </div>
+                     <form onSubmit={handleSubmit} className="space-y-3 border-t border-white/20 pt-4">
+                         <h4 className="font-bold text-md">Añadir Gasto para este día</h4>
                         <div>
-                            <label className="block text-sm font-medium">Concepto (Gasto Variable)</label>
-                            <select value={formState.conceptId} onChange={e => setFormState(s => ({...s, conceptId: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm">
+                            <select value={formState.conceptId} onChange={e => setFormState(s => ({...s, conceptId: e.target.value}))} className="block w-full rounded-md shadow-sm">
                                 <option value="">Seleccione un concepto</option>
                                 {expenseConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
-                            {errors.conceptId && <p className="text-red-500 text-xs mt-1">{errors.conceptId}</p>}
+                            {errors.conceptId && <p className="text-red-400 text-xs mt-1">{errors.conceptId}</p>}
                         </div>
                         <div>
-                            <label className="block text-sm font-medium">Monto</label>
-                            <input type="number" step="0.01" value={formState.amount || ''} onChange={e => setFormState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" />
-                            {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium">Fecha</label>
-                            <input type="date" value={formState.date} onChange={e => setFormState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" />
-                            {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+                            <input type="number" step="0.01" placeholder="Monto" value={formState.amount || ''} onChange={e => setFormState(s => ({...s, amount: parseFloat(e.target.value)}))} className="block w-full rounded-md shadow-sm" />
+                            {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount}</p>}
                         </div>
                         <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">
                             Registrar Gasto
                         </button>
                     </form>
-                </div>
-                <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-                        <div className="flex-grow">
-                            <h2 className="text-xl font-bold text-gray-800 dark:text-white">Historial de Gastos</h2>
-                            <p className="text-gray-500 dark:text-gray-400">Total del mes actual: <span className="font-bold text-primary-600 dark:text-primary-400">{formatCurrency(monthlyTotal)}</span></p>
-                        </div>
-                         <div className="w-full md:w-auto flex items-center gap-2">
-                             <input 
-                                type="text"
-                                placeholder="Buscar en historial..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full md:w-auto px-3 py-2 rounded-md border-gray-300 dark:border-gray-600 shadow-sm"
-                            />
-                            <CsvTools
-                                entityName="Gastos Diarios"
-                                items={data.dailyExpenses}
-                                headers={headers}
-                                onImport={handleImport}
-                                onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus gastos diarios han sido exportados.' })}
-                            />
-                        </div>
-                    </div>
-                    <div className="overflow-x-auto max-h-96">
-                        <table className="w-full text-left">
-                            <thead className="sticky top-0 bg-white dark:bg-gray-800">
-                                <tr className="border-b dark:border-gray-700">
-                                    <th className="p-3">Fecha</th>
-                                    <th className="p-3">Concepto</th>
-                                    <th className="p-3">Categoría</th>
-                                    <th className="p-3 text-right">Monto</th>
-                                    <th className="p-3 text-right">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredExpenses.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center p-8 text-gray-500">No hay gastos diarios registrados.</td></tr>
-                                ) : (
-                                    filteredExpenses.map(expense => (
-                                        <tr key={expense.id} className="border-b dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/50">
-                                            <td className="p-3 text-sm whitespace-nowrap">{new Date(expense.date).toLocaleDateString('es-MX')}</td>
-                                            <td className="p-3 font-medium">{expense.conceptName}</td>
-                                            <td className="p-3 text-sm">{expense.categoryName}</td>
-                                            <td className="p-3 text-right font-semibold text-red-600">{formatCurrency(expense.amount)}</td>
-                                            <td className="p-3 text-right">
-                                                <button onClick={() => handleDelete(expense.id)} className="text-gray-400 hover:text-red-500 p-1" title="Eliminar gasto">
-                                                    <DeleteIcon className="w-5 h-5"/>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                </GlassCard>
             </div>
+
             <ConfirmationModal
                 isOpen={!!deleteId}
                 onClose={() => setDeleteId(null)}

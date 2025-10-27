@@ -14,6 +14,21 @@ const formatCurrency = (value: number) => {
 };
 const formatFullCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
+const months = [
+    { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' }, { value: 2, label: 'Marzo' },
+    { value: 3, label: 'Abril' }, { value: 4, label: 'Mayo' }, { value: 5, label: 'Junio' },
+    { value: 6, label: 'Julio' }, { value: 7, label: 'Agosto' }, { value: 8, label: 'Septiembre' },
+    { value: 9, label: 'Octubre' }, { value: 10, label: 'Noviembre' }, { value: 11, label: 'Diciembre' }
+];
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
+
+const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+        {children}
+    </div>
+);
+
 const ConfirmationModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -32,20 +47,20 @@ const ConfirmationModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50">
-                    <WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" />
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-white">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/50">
+                    <WarningIcon className="h-6 w-6 text-red-300" />
                 </div>
-                <h3 className="text-lg leading-6 font-bold text-gray-900 dark:text-white mt-4">{title}</h3>
+                <h3 className="text-lg leading-6 font-bold mt-4">{title}</h3>
                 <div className="mt-2">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+                    <p className="text-sm text-gray-400">{message}</p>
                 </div>
                 <div className="mt-6 flex justify-center gap-4">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition"
+                        className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition"
                     >
                         Cancelar
                     </button>
@@ -84,15 +99,15 @@ const SuccessToast: React.FC<{
             }`}
         >
             {isOpen && (
-                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex items-start gap-4 ring-1 ring-black ring-opacity-5">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
+                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center">
+                       <CheckCircleIcon className="h-6 w-6 text-green-300" />
                     </div>
                     <div className="flex-grow">
-                        <p className="font-bold text-gray-900 dark:text-white">{title}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+                        <p className="font-bold">{title}</p>
+                        <p className="text-sm text-gray-300">{message}</p>
                     </div>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">&times;</button>
+                     <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
                 </div>
             )}
         </div>
@@ -102,8 +117,8 @@ const SuccessToast: React.FC<{
 const CustomTooltipContent = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         return (
-            <div className="p-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow-lg">
-                <p className="label font-bold">{label}</p>
+            <div className="p-2 bg-black/50 backdrop-blur-sm border border-white/20 rounded-md shadow-lg text-white">
+                <p className="label font-bold text-gray-200">{label}</p>
                 {payload.map((pld: any, index: number) => (
                     <div key={index} style={{ color: pld.color }}>
                         {`${pld.name}: ${formatFullCurrency(pld.value)}`}
@@ -133,12 +148,12 @@ const TransactionList: React.FC<{
     onDelete: (id: string, source: TransactionSource, expenseId?: string) => void;
 }> = ({ transactions, onDelete }) => {
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-            <h3 className="font-bold text-xl mb-4 text-gray-800 dark:text-white">Detalle de Transacciones</h3>
+        <GlassCard className="p-6">
+            <h3 className="font-bold text-xl mb-4 text-white">Detalle de Transacciones</h3>
             <div className="overflow-x-auto max-h-96">
                 <table className="w-full text-left">
-                    <thead className="sticky top-0 bg-white dark:bg-gray-800">
-                        <tr className="border-b dark:border-gray-700">
+                    <thead className="sticky top-0 bg-black/30 backdrop-blur-sm">
+                        <tr className="border-b border-white/20">
                             <th className="p-3">Fecha</th>
                             <th className="p-3">Concepto</th>
                             <th className="p-3">Categoría</th>
@@ -149,17 +164,17 @@ const TransactionList: React.FC<{
                     </thead>
                     <tbody>
                         {transactions.length === 0 ? (
-                             <tr><td colSpan={6} className="text-center p-8 text-gray-500">No se encontraron transacciones con los filtros seleccionados.</td></tr>
+                             <tr><td colSpan={6} className="text-center p-8 text-gray-400">No se encontraron transacciones con los filtros seleccionados.</td></tr>
                         ) : (
                             transactions.map(t => (
-                                <tr key={`${t.source}-${t.id}`} className="border-b dark:border-gray-700 even:bg-gray-50 dark:even:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                                <tr key={`${t.source}-${t.id}`} className="border-b border-white/10 hover:bg-white/10">
                                     <td className="p-3 text-sm whitespace-nowrap">{new Date(t.date).toLocaleDateString('es-MX')}</td>
                                     <td className="p-3 font-medium">{t.concept}</td>
                                     <td className="p-3 text-sm">{t.category}</td>
                                     <td className="p-3 text-sm">{t.type}</td>
-                                    <td className={`p-3 text-right font-semibold ${t.source === 'income' ? 'text-green-600' : 'text-red-600'}`}>{formatFullCurrency(t.amount)}</td>
+                                    <td className={`p-3 text-right font-semibold ${t.source === 'income' ? 'text-green-400' : 'text-red-400'}`}>{formatFullCurrency(t.amount)}</td>
                                     <td className="p-3 text-right">
-                                        <button onClick={() => onDelete(t.id, t.source, t.expenseId)} className="text-gray-400 hover:text-red-500 p-1" title="Eliminar registro">
+                                        <button onClick={() => onDelete(t.id, t.source, t.expenseId)} className="text-gray-400 hover:text-red-400 p-1" title="Eliminar registro">
                                             <DeleteIcon className="w-5 h-5"/>
                                         </button>
                                     </td>
@@ -169,7 +184,7 @@ const TransactionList: React.FC<{
                     </tbody>
                 </table>
             </div>
-        </div>
+        </GlassCard>
     );
 }
 
@@ -179,19 +194,22 @@ export const Reports: React.FC = () => {
     const stateFilters = location.state || {};
 
     const today = new Date();
-    const year = today.getFullYear();
-    const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    const lastDayOfMonth = new Date(year, today.getMonth() + 1, 0).getDate().toString().padStart(2, '0');
-
-    const startOfYear = `${year}-01-01`;
-    const endOfMonth = `${year}-${month}-${lastDayOfMonth}`;
-
-    const [startDate, setStartDate] = useState(startOfYear);
-    const [endDate, setEndDate] = useState(endOfMonth);
+    const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+    const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    
     const [typeFilter, setTypeFilter] = useState(stateFilters.filter || 'all');
     const [categoryFilter, setCategoryFilter] = useState(stateFilters.categoryFilter || 'all');
     const [deleteInfo, setDeleteInfo] = useState<{ id: string, source: TransactionSource, expenseId?: string } | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
+
+    useEffect(() => {
+        const firstDay = new Date(selectedYear, selectedMonth, 1).toISOString().split('T')[0];
+        const lastDay = new Date(selectedYear, selectedMonth + 1, 0).toISOString().split('T')[0];
+        setStartDate(firstDay);
+        setEndDate(lastDay);
+    }, [selectedMonth, selectedYear]);
 
     if (!data) {
         return <div>Cargando...</div>;
@@ -379,21 +397,24 @@ export const Reports: React.FC = () => {
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Reportes</h1>
+            <h1 className="text-3xl font-bold text-white">Reportes</h1>
 
             {/* Filters */}
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg flex flex-wrap items-center gap-4">
-                <div>
-                    <label className="text-sm font-medium mr-2">Desde:</label>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm" />
-                </div>
-                <div>
-                    <label className="text-sm font-medium mr-2">Hasta:</label>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm" />
+            <GlassCard className="p-4 flex flex-wrap items-center gap-4">
+                 <div>
+                    <label className="text-sm font-medium mr-2">Periodo:</label>
+                    <div className="flex items-center gap-2">
+                        <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="bg-black/20 border border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
+                            {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </select>
+                        <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="bg-black/20 border border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
+                            {years.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
                 </div>
                 <div>
                     <label className="text-sm font-medium mr-2">Tipo:</label>
-                    <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm">
+                    <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="rounded-md shadow-sm">
                         <option value="all">Todos</option>
                         <option value="incomes">Ingresos</option>
                         <option value="expenses">Gastos</option>
@@ -401,49 +422,49 @@ export const Reports: React.FC = () => {
                 </div>
                 <div>
                     <label className="text-sm font-medium mr-2">Categoría:</label>
-                    <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="rounded-md border-gray-300 dark:border-gray-600 shadow-sm" disabled={typeFilter === 'incomes'}>
+                    <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="rounded-md shadow-sm" disabled={typeFilter === 'incomes'}>
                         <option value="all">Todas</option>
                         {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
                 </div>
-            </div>
+            </GlassCard>
 
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                    <h3 className="font-bold text-xl mb-4 text-gray-800 dark:text-white">Ingresos vs. Gastos</h3>
+                <GlassCard className="p-6">
+                    <h3 className="font-bold text-xl mb-4">Ingresos vs. Gastos</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <ComposedChart data={incomeVsExpenseData}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis tickFormatter={formatCurrency} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
+                            <XAxis dataKey="month" tick={{ fill: '#d1d5db' }} />
+                            <YAxis tickFormatter={formatCurrency} tick={{ fill: '#d1d5db' }}/>
                             <Tooltip content={<CustomTooltipContent />} />
-                            <Legend />
+                            <Legend wrapperStyle={{ color: '#d1d5db' }} />
                             <Bar dataKey="Ingresos" fill="#22c55e" />
                             <Bar dataKey="Gastos" fill="#ef4444" />
                             <Line type="monotone" dataKey="Ingresos" stroke="#16a34a" strokeWidth={2} dot={false} />
                             <Line type="monotone" dataKey="Gastos" stroke="#dc2626" strokeWidth={2} dot={false} />
                         </ComposedChart>
                     </ResponsiveContainer>
-                </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                    <h3 className="font-bold text-xl mb-4 text-gray-800 dark:text-white">Gastos por Categoría</h3>
+                </GlassCard>
+                <GlassCard className="p-6">
+                    <h3 className="font-bold text-xl mb-4">Gastos por Categoría</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={categorySpendingData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" tickFormatter={formatCurrency} />
-                            <YAxis type="category" dataKey="name" width={100} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
+                            <XAxis type="number" tickFormatter={formatCurrency} tick={{ fill: '#d1d5db' }}/>
+                            <YAxis type="category" dataKey="name" width={100} tick={{ fill: '#d1d5db' }} />
                             <Tooltip content={<CustomTooltipContent />} />
                             <Bar dataKey="Gastos" fill="#3b82f6" />
                         </BarChart>
                     </ResponsiveContainer>
-                </div>
+                </GlassCard>
             </div>
             
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-                <h3 className="font-bold text-xl mb-4 text-gray-800 dark:text-white">Herramientas de Datos</h3>
+            <GlassCard className="p-6">
+                <h3 className="font-bold text-xl mb-4">Herramientas de Datos</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="bg-black/20 p-4 rounded-lg">
                         <h4 className="font-semibold mb-2">Gestión de Ingresos</h4>
                         <CsvTools 
                             entityName="Ingresos" 
@@ -453,7 +474,7 @@ export const Reports: React.FC = () => {
                             onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus ingresos han sido exportados a un archivo CSV.' })}
                         />
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                    <div className="bg-black/20 p-4 rounded-lg">
                         <h4 className="font-semibold mb-2">Gestión de Gastos Diarios</h4>
                         <CsvTools 
                             entityName="Gastos Diarios" 
@@ -464,7 +485,7 @@ export const Reports: React.FC = () => {
                         />
                     </div>
                 </div>
-            </div>
+            </GlassCard>
 
             <TransactionList transactions={filteredTransactions} onDelete={handleDelete} />
 

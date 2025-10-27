@@ -43,7 +43,7 @@ export const DEMO_DATA: AppData = {
     { id: 'CA-005', name: 'Educación', movementTypeId: 'TM-001', costTypeId: 'TC-001' },
     { id: 'CA-006', name: 'Seguros', movementTypeId: 'TM-001', costTypeId: 'TC-001' },
     
-    // Gastos Variables
+    // Gastos Variables y Diarios
     { id: 'CA-007', name: 'Alimentación', movementTypeId: 'TM-001', costTypeId: 'TC-002', description: 'Compras de supermercado, restaurantes y comida a domicilio.' },
     { id: 'CA-008', name: 'Transporte', movementTypeId: 'TM-001', costTypeId: 'TC-002' },
     { id: 'CA-009', name: 'Salud y Cuidado Personal', movementTypeId: 'TM-001', costTypeId: 'TC-002' },
@@ -106,13 +106,14 @@ export const DEMO_DATA: AppData = {
 
     // Salud y Cuidado Personal (Variable)
     { id: 'CO-028', name: 'Farmacia', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
-    { id: 'CO-029', name: 'Consulta Médica', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
     { id: 'CO-030', name: 'Gimnasio', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
     { id: 'CO-031', name: 'Corte de Pelo / Barbería', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
+    { id: 'CO-029', name: 'Consulta Médica', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
 
     // Entretenimiento y Ocio (Variable)
     { id: 'CO-032', name: 'Cine', movementTypeId: 'TM-001', categoryId: 'CA-010', costTypeId: 'TC-002' },
     { id: 'CO-033', name: 'Salidas con Amigos / Bares', movementTypeId: 'TM-001', categoryId: 'CA-010', costTypeId: 'TC-002' },
+    { id: 'CO-044', name: 'Gastos Hormiga (Antojos, etc.)', movementTypeId: 'TM-001', categoryId: 'CA-013', costTypeId: 'TC-002' },
     { id: 'CO-034', name: 'Conciertos y Eventos', movementTypeId: 'TM-001', categoryId: 'CA-010', costTypeId: 'TC-002' },
     { id: 'CO-035', name: 'Hobbies', movementTypeId: 'TM-001', categoryId: 'CA-010', costTypeId: 'TC-002' },
 
@@ -129,7 +130,6 @@ export const DEMO_DATA: AppData = {
     // Otros Gastos (Variable)
     { id: 'CO-042', name: 'Regalos', movementTypeId: 'TM-001', categoryId: 'CA-013', costTypeId: 'TC-002' },
     { id: 'CO-043', name: 'Donaciones', movementTypeId: 'TM-001', categoryId: 'CA-013', costTypeId: 'TC-002' },
-    { id: 'CO-044', name: 'Gastos Hormiga (Antojos, etc.)', movementTypeId: 'TM-001', categoryId: 'CA-013', costTypeId: 'TC-002' },
     
     // Ingresos (Sin Categoría)
     { id: 'CO-045', name: 'Nómina', movementTypeId: 'TM-002', categoryId: '', costTypeId: ''},

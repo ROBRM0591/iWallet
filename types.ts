@@ -56,11 +56,12 @@ export interface Income extends BaseTransaction {
 }
 
 export interface PlannedExpense {
-  id: string;
+  id:string;
   conceptId: string;
   icon?: string;
   iconColor?: string;
   amountPerPeriod: number;
+  periodOverrides?: Record<string, number>; // { 'YYYY-MM': amount }
   cutOffDay: number;
   dueDay: number;
   startPeriod: string; // YYYY-MM

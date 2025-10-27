@@ -1,9 +1,15 @@
 import React from 'react';
 
+const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+        {children}
+    </div>
+);
+
 const ManualSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-3 text-primary-600 dark:text-primary-400">{title}</h2>
-        <div className="space-y-3 text-gray-700 dark:text-gray-300 leading-relaxed">
+        <h2 className="text-2xl font-bold mb-3 text-primary-400">{title}</h2>
+        <div className="space-y-3 text-gray-300 leading-relaxed">
             {children}
         </div>
     </div>
@@ -11,8 +17,8 @@ const ManualSection: React.FC<{ title: string; children: React.ReactNode }> = ({
 
 export const UserManual: React.FC = () => {
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Manual de Usuario de iWallet</h1>
+        <GlassCard className="p-6 sm:p-8">
+            <h1 className="text-3xl font-bold mb-6 text-white">Manual de Usuario de iWallet</h1>
             
             <ManualSection title="1. Dashboard: Tu Centro Financiero">
                 <p>El Dashboard es tu pantalla principal, diseñada para darte una visión completa y rápida de tu estado financiero actual.</p>
@@ -105,6 +111,6 @@ export const UserManual: React.FC = () => {
                     <li><strong>Restablecer Datos:</strong> ¡Usa con precaución! Esta opción borra toda la información de la aplicación y la deja como nueva. Es una acción irreversible.</li>
                 </ul>
             </ManualSection>
-        </div>
+        </GlassCard>
     );
 };

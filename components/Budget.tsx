@@ -8,6 +8,21 @@ import { generateSequentialId } from './utils';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
+const months = [
+    { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' }, { value: 2, label: 'Marzo' },
+    { value: 3, label: 'Abril' }, { value: 4, label: 'Mayo' }, { value: 5, label: 'Junio' },
+    { value: 6, label: 'Julio' }, { value: 7, label: 'Agosto' }, { value: 8, label: 'Septiembre' },
+    { value: 9, label: 'Octubre' }, { value: 10, label: 'Noviembre' }, { value: 11, label: 'Diciembre' }
+];
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
+
+const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+        {children}
+    </div>
+);
+
 const SuccessToast: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -15,18 +30,11 @@ const SuccessToast: React.FC<{
     message: string;
 }> = ({ isOpen, onClose, title, message }) => {
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
         if (isOpen) {
-            document.addEventListener('keydown', handleKeyDown);
             const timer = setTimeout(() => {
                 onClose();
             }, 5000);
-            return () => {
-                clearTimeout(timer)
-                document.removeEventListener('keydown', handleKeyDown);
-            };
+            return () => clearTimeout(timer);
         }
     }, [isOpen, onClose]);
 
@@ -37,15 +45,15 @@ const SuccessToast: React.FC<{
             }`}
         >
             {isOpen && (
-                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex items-start gap-4 ring-1 ring-black ring-opacity-5">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
+                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center">
+                       <CheckCircleIcon className="h-6 w-6 text-green-300" />
                     </div>
                     <div className="flex-grow">
-                        <p className="font-bold text-gray-900 dark:text-white">{title}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+                        <p className="font-bold">{title}</p>
+                        <p className="text-sm text-gray-300">{message}</p>
                     </div>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">&times;</button>
+                     <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
                 </div>
             )}
         </div>
@@ -53,12 +61,11 @@ const SuccessToast: React.FC<{
 };
 
 const SummaryCard: React.FC<{ title: string; amount: number; color: string; }> = ({ title, amount, color }) => (
-    <div className={`bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 ${color}`}>
-        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</h3>
-        <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{formatCurrency(amount)}</p>
-    </div>
+    <GlassCard className={`p-6 border-l-4 ${color}`}>
+        <h3 className="text-sm font-medium text-gray-300">{title}</h3>
+        <p className="mt-1 text-3xl font-semibold text-white">{formatCurrency(amount)}</p>
+    </GlassCard>
 );
-
 
 const BudgetCategoryItem: React.FC<{
     categoryName: string;
@@ -79,10 +86,10 @@ const BudgetCategoryItem: React.FC<{
     };
 
     return (
-        <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl group">
+        <div className="bg-black/20 p-4 rounded-xl group">
             <div className="flex justify-between items-center mb-2">
                 <h4 
-                    className="font-bold text-lg cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition"
+                    className="font-bold text-lg cursor-pointer hover:text-primary-400 transition"
                     onClick={onClick}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
                     role="button"
@@ -92,12 +99,12 @@ const BudgetCategoryItem: React.FC<{
                 </h4>
                 <div className="w-1/3 flex items-center gap-1">
                      <div className="relative flex-grow">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">$</span>
                         <input
                             type="number"
                             value={budgeted === 0 ? '' : budgeted}
                             onChange={(e) => onBudgetChange(Number(e.target.value) || 0)}
-                            className="w-full pl-7 pr-2 py-1 text-right rounded-md border-gray-300 dark:border-gray-600 shadow-sm"
+                            className="w-full pl-7 pr-2 py-1 text-right rounded-md shadow-sm"
                             placeholder="Presupuesto"
                         />
                     </div>
@@ -111,7 +118,7 @@ const BudgetCategoryItem: React.FC<{
                 </div>
             </div>
             <div 
-                className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-600 mb-2 cursor-pointer"
+                className="w-full bg-black/30 rounded-full h-4 mb-2 cursor-pointer"
                 onClick={onClick}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
                 role="button"
@@ -120,10 +127,10 @@ const BudgetCategoryItem: React.FC<{
             >
                 <div className={`${getProgressBarColor()} h-4 rounded-full transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
             </div>
-            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex justify-between text-sm text-gray-300">
                 <span>Gastado: {formatCurrency(spent)}</span>
                 {budgeted > 0 && (
-                    <span className={remaining < 0 ? 'text-red-500 font-semibold' : ''}>
+                    <span className={remaining < 0 ? 'text-red-400 font-semibold' : ''}>
                         {remaining >= 0 ? `Restante: ${formatCurrency(remaining)}` : `Excedido: ${formatCurrency(Math.abs(remaining))}`}
                     </span>
                 )}
@@ -139,26 +146,29 @@ export const Budget: React.FC = () => {
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
     const [addingBudgetId, setAddingBudgetId] = useState<string | null>(null);
     const [newBudgetAmount, setNewBudgetAmount] = useState<number | string>('');
+    const [selectedDate, setSelectedDate] = useState({
+        month: new Date().getMonth(),
+        year: new Date().getFullYear(),
+    });
 
     if (!data) {
         return <div>Cargando...</div>;
     }
 
-    const { expenseCategories, monthlySpending } = useMemo(() => {
+    const { expenseCategories, periodSpending } = useMemo(() => {
         const movGasto = data.movementTypes.find(m => m.name === MovementTypeName.GASTO);
-        if (!movGasto) return { expenseCategories: [], monthlySpending: new Map<string, number>() };
+        if (!movGasto) return { expenseCategories: [], periodSpending: new Map<string, number>() };
 
         const expenseCategories = data.categories.filter(c => c.movementTypeId === movGasto.id);
 
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        const startOfMonth = new Date(selectedDate.year, selectedDate.month, 1);
+        const endOfMonth = new Date(selectedDate.year, selectedDate.month + 1, 0, 23, 59, 59);
 
-        const monthlySpending = new Map<string, number>();
+        const periodSpending = new Map<string, number>();
 
         const addExpense = (categoryId: string | undefined, amount: number) => {
              if (categoryId) {
-                monthlySpending.set(categoryId, (monthlySpending.get(categoryId) || 0) + amount);
+                periodSpending.set(categoryId, (periodSpending.get(categoryId) || 0) + amount);
             }
         };
 
@@ -180,17 +190,16 @@ export const Budget: React.FC = () => {
             });
         });
 
-        return { expenseCategories, monthlySpending };
-    }, [data]);
+        return { expenseCategories, periodSpending };
+    }, [data, selectedDate]);
     
     const summary = useMemo(() => {
-        // FIX: Explicitly type the accumulator `sum` as `number` to resolve TypeScript
-        // inference issues where `sum` could be inferred as `unknown`.
-        const totalBudgeted = data.monthlyBudgets.reduce((sum: number, b) => sum + Number(b.amount || 0), 0);
-        const totalSpent = Array.from(monthlySpending.values()).reduce((sum: number, amount) => sum + Number(amount || 0), 0);
+        // FIX: Explicitly type accumulators and values in reduce functions to prevent type inference errors.
+        const totalBudgeted = data.monthlyBudgets.reduce((sum: number, b) => sum + (Number(b.amount) || 0), 0);
+        const totalSpent = Array.from(periodSpending.values()).reduce((sum: number, amount: number) => sum + (amount || 0), 0);
         const totalRemaining = totalBudgeted - totalSpent;
         return { totalBudgeted, totalSpent, totalRemaining };
-    }, [data.monthlyBudgets, monthlySpending]);
+    }, [data.monthlyBudgets, periodSpending]);
 
     const handleBudgetChange = (categoryId: string, amount: number) => {
         const existingBudget = data.monthlyBudgets.find(b => b.categoryId === categoryId);
@@ -259,16 +268,34 @@ export const Budget: React.FC = () => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Presupuesto Mensual</h1>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <h1 className="text-3xl font-bold text-white">Presupuesto Mensual</h1>
+                <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded-lg">
+                    <select
+                        value={selectedDate.month}
+                        onChange={(e) => setSelectedDate(prev => ({ ...prev, month: Number(e.target.value) }))}
+                        className="border border-white/20 rounded-md py-1 px-2 text-sm font-semibold"
+                    >
+                        {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
+                    <select
+                        value={selectedDate.year}
+                        onChange={(e) => setSelectedDate(prev => ({ ...prev, year: Number(e.target.value) }))}
+                        className="border border-white/20 rounded-md py-1 px-2 text-sm font-semibold"
+                    >
+                        {years.map(y => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                </div>
+            </div>
              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                 <SummaryCard title="Total Presupuestado" amount={summary.totalBudgeted} color="border-primary-500" />
                 <SummaryCard title="Total Gastado" amount={summary.totalSpent} color="border-red-500" />
                 <SummaryCard title="Restante Total" amount={summary.totalRemaining < 0 ? 0 : summary.totalRemaining} color={summary.totalRemaining < 0 ? 'border-yellow-500' : 'border-green-500'} />
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+            <GlassCard className="p-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">Presupuesto por Categoría</h2>
+                    <h2 className="text-xl font-bold text-white">Presupuesto por Categoría</h2>
                     <CsvTools
                         entityName="Presupuestos"
                         items={data.monthlyBudgets}
@@ -281,7 +308,7 @@ export const Budget: React.FC = () => {
                     {expenseCategories.length > 0 ? (
                         expenseCategories.map(category => {
                             const budget = data.monthlyBudgets.find(b => b.categoryId === category.id);
-                            const spent = monthlySpending.get(category.id) || 0;
+                            const spent = periodSpending.get(category.id) || 0;
 
                             if (budget) {
                                 return (
@@ -297,17 +324,17 @@ export const Budget: React.FC = () => {
                                 );
                             } else if (addingBudgetId === category.id) {
                                 return (
-                                    <div key={category.id} className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl transition-all duration-300">
+                                    <div key={category.id} className="bg-black/20 p-4 rounded-xl transition-all duration-300">
                                         <h4 className="font-bold text-lg mb-2">{category.name}</h4>
                                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                                             <div className="relative flex-grow">
-                                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">$</span>
                                                 <input
                                                     type="number"
                                                     value={newBudgetAmount}
                                                     onChange={(e) => setNewBudgetAmount(e.target.value)}
                                                     placeholder="Monto del presupuesto"
-                                                    className="w-full pl-7 pr-2 py-2 rounded-md border-gray-300 dark:border-gray-600 shadow-sm"
+                                                    className="w-full pl-7 pr-2 py-2 rounded-md shadow-sm"
                                                     autoFocus
                                                 />
                                             </div>
@@ -315,7 +342,7 @@ export const Budget: React.FC = () => {
                                                 <button onClick={() => handleSaveNewBudget(category.id)} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">
                                                     Guardar
                                                 </button>
-                                                <button onClick={handleCancelAddBudget} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg text-sm transition">
+                                                <button onClick={handleCancelAddBudget} className="bg-white/10 hover:bg-white/20 text-gray-200 font-semibold px-4 py-2 rounded-lg text-sm transition">
                                                     Cancelar
                                                 </button>
                                             </div>
@@ -324,9 +351,9 @@ export const Budget: React.FC = () => {
                                 );
                             } else {
                                 return (
-                                <div key={category.id} className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl flex justify-between items-center">
+                                <div key={category.id} className="bg-black/20 p-4 rounded-xl flex justify-between items-center">
                                     <h4 className="font-bold text-lg">{category.name}</h4>
-                                    <button onClick={() => handleAddBudgetClick(category.id)} className="bg-primary-100 hover:bg-primary-200 dark:bg-primary-900/50 dark:hover:bg-primary-900 text-primary-700 dark:text-primary-200 font-semibold px-4 py-2 rounded-lg text-sm transition">
+                                    <button onClick={() => handleAddBudgetClick(category.id)} className="bg-primary-900/50 hover:bg-primary-900 text-primary-200 font-semibold px-4 py-2 rounded-lg text-sm transition">
                                         Añadir Presupuesto
                                     </button>
                                 </div>
@@ -334,15 +361,15 @@ export const Budget: React.FC = () => {
                             }
                         })
                     ) : (
-                        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <div className="text-center py-8 text-gray-400">
                             <p>No hay categorías de gastos para presupuestar.</p>
                             <p className="mt-2 text-sm">
-                                Por favor, ve a <a href="#/catalogs" className="font-medium text-primary-600 hover:underline">Catálogos</a> para añadir categorías de gastos.
+                                Por favor, ve a <a href="#/catalogs" className="font-medium text-primary-400 hover:underline">Catálogos</a> para añadir categorías de gastos.
                             </p>
                         </div>
                     )}
                 </div>
-            </div>
+            </GlassCard>
             <SuccessToast 
                 isOpen={!!successInfo}
                 onClose={() => setSuccessInfo(null)}

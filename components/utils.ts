@@ -44,7 +44,8 @@ export const getNextPeriodToPay = (expense: PlannedExpense): { period: string; i
     for (let i = 0; i < allPeriods.length; i++) {
         const period = allPeriods[i];
         const paidAmount = paymentsByPeriod.get(period) || 0;
-        if (paidAmount < expense.amountPerPeriod) {
+        const amountForPeriod = expense.periodOverrides?.[period] ?? expense.amountPerPeriod;
+        if (paidAmount < amountForPeriod) {
             return { period, index: i };
         }
     }

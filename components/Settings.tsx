@@ -7,6 +7,12 @@ import { WarningIcon, CheckCircleIcon } from './Icons';
 import { IconDisplay } from './IconDisplay';
 import { IconPicker } from './IconPicker';
 
+const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
+    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+        {children}
+    </div>
+);
+
 const ConfirmationModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -25,20 +31,20 @@ const ConfirmationModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50">
-                    <WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" />
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-white">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/50">
+                    <WarningIcon className="h-6 w-6 text-red-300" />
                 </div>
-                <h3 className="text-lg leading-6 font-bold text-gray-900 dark:text-white mt-4">{title}</h3>
+                <h3 className="text-lg leading-6 font-bold mt-4">{title}</h3>
                 <div className="mt-2">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+                    <p className="text-sm text-gray-400">{message}</p>
                 </div>
                 <div className="mt-6 flex justify-center gap-4">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition"
+                        className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition"
                     >
                         Cancelar
                     </button>
@@ -77,15 +83,15 @@ const SuccessToast: React.FC<{
             }`}
         >
             {isOpen && (
-                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-4 flex items-start gap-4 ring-1 ring-black ring-opacity-5">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
+                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center">
+                       <CheckCircleIcon className="h-6 w-6 text-green-300" />
                     </div>
                     <div className="flex-grow">
-                        <p className="font-bold text-gray-900 dark:text-white">{title}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+                        <p className="font-bold">{title}</p>
+                        <p className="text-sm text-gray-300">{message}</p>
                     </div>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">&times;</button>
+                     <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
                 </div>
             )}
         </div>
@@ -93,11 +99,11 @@ const SuccessToast: React.FC<{
 };
 
 const FeatureCard: React.FC<{ title: string, description: string, children: React.ReactNode }> = ({ title, description, children }) => (
-    <div className="bg-gray-50 dark:bg-gray-700/50 p-6 rounded-xl">
-        <h3 className="text-lg font-bold text-gray-800 dark:text-white">{title}</h3>
-        <p className="text-gray-600 dark:text-gray-400 mt-1 mb-4">{description}</p>
+    <GlassCard className="p-6">
+        <h3 className="text-lg font-bold">{title}</h3>
+        <p className="text-gray-300 mt-1 mb-4">{description}</p>
         {children}
-    </div>
+    </GlassCard>
 );
 
 interface OutletContextType {
@@ -273,8 +279,8 @@ export const Settings: React.FC = () => {
     };
 
     return (
-        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-lg">
-            <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-white">Ajustes</h1>
+        <div>
+            <h1 className="text-3xl font-bold mb-6 text-white">Ajustes</h1>
             <div className="space-y-8">
                  <FeatureCard
                     title="Personalizar Apariencia"
@@ -283,8 +289,8 @@ export const Settings: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <p className="font-medium">Ícono actual:</p>
                         <div className="relative" ref={iconPickerContainerRef}>
-                            <button onClick={() => setIconPickerOpen(prev => !prev)} className="flex items-center gap-2 p-2 rounded-lg bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 transition">
-                                <IconDisplay icon={appIcon} className="w-6 h-6 text-primary-600" />
+                            <button onClick={() => setIconPickerOpen(prev => !prev)} className="flex items-center gap-2 p-2 rounded-lg bg-black/20 hover:bg-black/30 transition">
+                                <IconDisplay icon={appIcon} className="w-6 h-6 text-primary-400" />
                                 <span>Cambiar</span>
                             </button>
                              {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} />}
@@ -299,12 +305,12 @@ export const Settings: React.FC = () => {
                     <button
                         onClick={handleNotificationRequest}
                         disabled={notificationPermission === 'denied'}
-                        className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed"
                     >
                         {notificationPermission === 'granted' ? 'Notificaciones Activadas' : 'Activar Notificaciones'}
                     </button>
                     {notificationPermission === 'denied' && (
-                        <p className="text-red-500 text-sm mt-2">
+                        <p className="text-red-400 text-sm mt-2">
                             Las notificaciones están bloqueadas. Para activarlas, ve a la configuración de tu navegador, busca los permisos de este sitio y cambia la opción de "Notificaciones" a "Permitir".
                         </p>
                     )}
@@ -318,7 +324,7 @@ export const Settings: React.FC = () => {
                         <select
                             value={data.notifications.defaultReminderDays}
                             onChange={handleDefaultReminderChange}
-                            className="bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg py-2 px-4"
+                            className="rounded-lg py-2 px-4"
                         >
                             <option value="-1">No recordar</option>
                             <option value="0">El día del vencimiento</option>
@@ -331,7 +337,7 @@ export const Settings: React.FC = () => {
                             type="time"
                             value={data.notifications.defaultReminderTime}
                             onChange={handleDefaultReminderTimeChange}
-                            className="bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg py-2 px-4"
+                            className="rounded-lg py-2 px-4"
                         />
                     </div>
                 </FeatureCard>
@@ -356,12 +362,12 @@ export const Settings: React.FC = () => {
                         />
                          <button 
                             onClick={() => fileInputRef.current?.click()}
-                            className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg"
+                            className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg"
                         >
                             Importar Datos
                         </button>
                     </div>
-                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">Sugerencia: Guarda el archivo exportado en un lugar seguro para tener un respaldo.</p>
+                     <p className="text-xs text-gray-400 mt-3">Sugerencia: Guarda el archivo exportado en un lugar seguro para tener un respaldo.</p>
                 </FeatureCard>
                 
                 <FeatureCard
@@ -374,7 +380,7 @@ export const Settings: React.FC = () => {
                     >
                         Restablecer Datos Ahora
                     </button>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">¡Cuidado! Esta acción no se puede deshacer.</p>
+                    <p className="text-xs text-gray-400 mt-3">¡Cuidado! Esta acción no se puede deshacer.</p>
                 </FeatureCard>
 
                  <FeatureCard
@@ -384,16 +390,16 @@ export const Settings: React.FC = () => {
                      <div className="flex items-center gap-4">
                         <img src={`https://i.pravatar.cc/48?u=${userProfile?.email}`} alt="Avatar de usuario" className="w-12 h-12 rounded-full"/>
                         <div>
-                            <p className="font-semibold text-gray-800 dark:text-white">{userProfile?.username}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{userProfile?.email} (Perfil Local)</p>
+                            <p className="font-semibold">{userProfile?.username}</p>
+                            <p className="text-sm text-gray-400">{userProfile?.email} (Perfil Local)</p>
                         </div>
                     </div>
                     <div className="mt-4">
-                        <button disabled className="bg-gray-300 dark:bg-gray-500 text-gray-500 dark:text-gray-300 font-bold py-2 px-4 rounded-lg cursor-not-allowed">
+                        <button disabled className="bg-gray-500 text-gray-300 font-bold py-2 px-4 rounded-lg cursor-not-allowed">
                             Activar Sincronización
                         </button>
                     </div>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">Nota: Esta es una demostración. La funcionalidad completa requiere un servicio de backend.</p>
+                    <p className="text-xs text-gray-400 mt-3">Nota: Esta es una demostración. La funcionalidad completa requiere un servicio de backend.</p>
                 </FeatureCard>
             </div>
              <ConfirmationModal

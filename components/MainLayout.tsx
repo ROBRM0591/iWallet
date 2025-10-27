@@ -5,6 +5,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { AppData, DailyExpense, Income, MovementTypeName, Payment } from '../types';
 import { COLOR_PALETTES } from '../constants';
 import { Header } from './Header';
+import { BottomNav } from './BottomNav';
 import { getNextPeriodToPay, generateSequentialId } from './utils';
 import { PlusIcon, CloseIcon } from './Icons';
 
@@ -31,11 +32,11 @@ const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, chi
 
     if (!isOpen) return null;
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
+                <div className="flex justify-between items-center p-4 border-b border-white/20">
                     <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-200">
                         <CloseIcon className="w-6 h-6" />
                     </button>
                 </div>
@@ -69,15 +70,19 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
     const [errors, setErrors] = useState<Record<string, string>>({});
     
     const movGastoId = useMemo(() => data.movementTypes.find(m => m.name === MovementTypeName.GASTO)?.id, [data.movementTypes]);
+    const diarioCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Diario')?.id, [data.costTypes]);
+    const expenseConcepts = useMemo(() => data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === diarioCostTypeId), [data.concepts, movGastoId, diarioCostTypeId]);
+    
+    const fijoCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Fijo')?.id, [data.costTypes]);
     const variableCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Variable')?.id, [data.costTypes]);
-    const expenseConcepts = useMemo(() => data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === variableCostTypeId), [data.concepts, movGastoId, variableCostTypeId]);
-    const fixedCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Fijo')?.id, [data.costTypes]);
     const pendingPlannedExpenses = useMemo(() => {
         return data.plannedExpenses.filter(pe => {
             const concept = data.concepts.find(c => c.id === pe.conceptId);
-            return getNextPeriodToPay(pe) !== null && concept?.costTypeId === fixedCostTypeId;
+            if (!concept) return false;
+            const isPlannedType = concept.costTypeId === fijoCostTypeId || concept.costTypeId === variableCostTypeId;
+            return getNextPeriodToPay(pe) !== null && isPlannedType;
         });
-    }, [data.plannedExpenses, data.concepts, fixedCostTypeId]);
+    }, [data.plannedExpenses, data.concepts, fijoCostTypeId, variableCostTypeId]);
 
     useEffect(() => {
         const { periodType, month, year } = incomeState;
@@ -95,7 +100,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
                 const paidInPeriod = expense.payments
                     .filter(p => p.period === nextPeriod.period)
                     .reduce((sum, p) => sum + p.amount, 0);
-                const remaining = expense.amountPerPeriod - paidInPeriod;
+                const remaining = (expense.periodOverrides?.[nextPeriod.period] ?? expense.amountPerPeriod) - paidInPeriod;
                 setPaymentState(s => ({ ...s, period: nextPeriod.period, remaining, amount: remaining > 0 ? remaining : 0 }));
             }
         } else {
@@ -197,15 +202,15 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Registro Rápido">
-             <div className="border-b border-gray-200 dark:border-gray-700">
+             <div className="border-b border-white/20">
                 <nav className="-mb-px flex space-x-4" aria-label="Tabs">
-                    <button onClick={() => handleTabChange('expense')} className={`${activeTab === 'expense' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
-                        Gasto
+                    <button onClick={() => handleTabChange('expense')} className={`${activeTab === 'expense' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
+                        Gasto Diario
                     </button>
-                    <button onClick={() => handleTabChange('payment')} className={`${activeTab === 'payment' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
-                        Abono Planificado
+                    <button onClick={() => handleTabChange('payment')} className={`${activeTab === 'payment' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
+                        Gasto Planificado
                     </button>
-                    <button onClick={() => handleTabChange('income')} className={`${activeTab === 'income' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
+                    <button onClick={() => handleTabChange('income')} className={`${activeTab === 'income' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
                         Ingreso
                     </button>
                 </nav>
@@ -213,51 +218,51 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
             {activeTab === 'expense' ? (
                 <form onSubmit={handleExpenseSubmit} className="space-y-4 mt-4">
                      <div>
-                        <label className="block text-sm font-medium">Concepto (Gasto Variable)</label>
-                        <select value={expenseState.conceptId} onChange={e => setExpenseState(s => ({...s, conceptId: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm">
+                        <label className="block text-sm font-medium">Concepto (Gasto Diario)</label>
+                        <select value={expenseState.conceptId} onChange={e => setExpenseState(s => ({...s, conceptId: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm">
                             <option value="">Seleccione un concepto</option>
                             {expenseConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        {errors.conceptId && <p className="text-red-500 text-xs mt-1">{errors.conceptId}</p>}
+                        {errors.conceptId && <p className="text-red-400 text-xs mt-1">{errors.conceptId}</p>}
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Monto</label>
-                        <input type="number" step="0.01" value={expenseState.amount || ''} onChange={e => setExpenseState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" />
-                        {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                        <input type="number" step="0.01" value={expenseState.amount || ''} onChange={e => setExpenseState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md shadow-sm" />
+                        {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount}</p>}
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Fecha</label>
-                        <input type="date" value={expenseState.date} onChange={e => setExpenseState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" />
-                        {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+                        <input type="date" value={expenseState.date} onChange={e => setExpenseState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm" />
+                        {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="button" onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                         <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Gasto</button>
                     </div>
                 </form>
             ) : activeTab === 'payment' ? (
                  <form onSubmit={handlePaymentSubmit} className="space-y-4 mt-4">
                      <div>
-                        <label className="block text-sm font-medium">Gasto Planificado (Costo Fijo)</label>
-                        <select value={paymentState.expenseId} onChange={e => setPaymentState(s => ({...s, expenseId: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm">
+                        <label className="block text-sm font-medium">Gasto Planificado (Fijo/Variable)</label>
+                        <select value={paymentState.expenseId} onChange={e => setPaymentState(s => ({...s, expenseId: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm">
                             <option value="">Seleccione un gasto</option>
                             {pendingPlannedExpenses.map(pe => <option key={pe.id} value={pe.id}>{data.concepts.find(c => c.id === pe.conceptId)?.name}</option>)}
                         </select>
-                         {paymentState.period && <p className="text-xs text-gray-500 mt-1">Abono para el periodo {months[Number(paymentState.period.split('-')[1]) - 1].label}. Restante: {formatCurrency(paymentState.remaining)}</p>}
-                         {errors.expenseId && <p className="text-red-500 text-xs mt-1">{errors.expenseId}</p>}
+                         {paymentState.period && <p className="text-xs text-gray-400 mt-1">Abono para el periodo {months.find(m => m.value === (Number(paymentState.period.split('-')[1]) - 1).toString().padStart(2, '0'))?.label}. Restante: {formatCurrency(paymentState.remaining)}</p>}
+                         {errors.expenseId && <p className="text-red-400 text-xs mt-1">{errors.expenseId}</p>}
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Monto del Abono</label>
-                        <input type="number" step="0.01" value={paymentState.amount || ''} onChange={e => setPaymentState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" disabled={!paymentState.expenseId} />
-                        {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                        <input type="number" step="0.01" value={paymentState.amount || ''} onChange={e => setPaymentState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md shadow-sm" disabled={!paymentState.expenseId} />
+                        {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount}</p>}
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Fecha del Abono</label>
-                        <input type="date" value={paymentState.date} onChange={e => setPaymentState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" />
-                        {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+                        <input type="date" value={paymentState.date} onChange={e => setPaymentState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm" />
+                        {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="button" onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                         <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Abono</button>
                     </div>
                 </form>
@@ -266,35 +271,35 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
                      <div>
                         <label className="block text-sm font-medium">Periodo</label>
                         <div className="flex gap-2 mt-1">
-                             <select value={incomeState.periodType} onChange={e => setIncomeState(s => ({...s, periodType: e.target.value}))} className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm">
+                             <select value={incomeState.periodType} onChange={e => setIncomeState(s => ({...s, periodType: e.target.value}))} className="block w-full rounded-md shadow-sm">
                                 <option>1ra Quincena</option>
                                 <option>2da Quincena</option>
                             </select>
-                            <select value={incomeState.month} onChange={e => setIncomeState(s => ({...s, month: e.target.value}))} className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm">
+                            <select value={incomeState.month} onChange={e => setIncomeState(s => ({...s, month: e.target.value}))} className="block w-full rounded-md shadow-sm">
                                 {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                             </select>
-                            <select value={incomeState.year} onChange={e => setIncomeState(s => ({...s, year: e.target.value}))} className="block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm">
+                            <select value={incomeState.year} onChange={e => setIncomeState(s => ({...s, year: e.target.value}))} className="block w-full rounded-md shadow-sm">
                                 {years.map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
                         </div>
                     </div>
                      <div>
                         <label className="block text-sm font-medium">Descripción</label>
-                        <input type="text" value={incomeState.description} onChange={e => setIncomeState(s => ({...s, description: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" />
-                        {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
+                        <input type="text" value={incomeState.description} onChange={e => setIncomeState(s => ({...s, description: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm" />
+                        {errors.description && <p className="text-red-400 text-xs mt-1">{errors.description}</p>}
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Monto</label>
-                        <input type="number" step="0.01" value={incomeState.amount || ''} onChange={e => setIncomeState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" />
-                        {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                        <input type="number" step="0.01" value={incomeState.amount || ''} onChange={e => setIncomeState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md shadow-sm" />
+                        {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount}</p>}
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Fecha de Registro</label>
-                        <input type="date" value={incomeState.date} onChange={e => setIncomeState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 shadow-sm" />
-                        {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+                        <input type="date" value={incomeState.date} onChange={e => setIncomeState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm" />
+                        {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="button" onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                         <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Ingreso</button>
                     </div>
                 </form>
@@ -305,7 +310,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
 
 export const MainLayout: React.FC = () => {
     const { appData, setData, userProfile, logout } = useAuth();
-    const [theme, setTheme] = useLocalStorage<Theme>('iwallet-theme', 'light');
+    const [theme, setTheme] = useLocalStorage<Theme>('iwallet-theme', 'dark');
     const [appIcon, setAppIcon] = useLocalStorage('iwallet-app-icon', 'wallet');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isQuickAddModalOpen, setQuickAddModalOpen] = useState(false);
@@ -344,7 +349,7 @@ export const MainLayout: React.FC = () => {
     }, []);
     
     useEffect(() => {
-        setPalette(COLOR_PALETTES[0]);
+        setPalette(COLOR_PALETTES[2]); // Default to Purple
     }, [setPalette]);
 
     useEffect(() => {
@@ -395,7 +400,7 @@ export const MainLayout: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+        <div className="min-h-screen transition-colors duration-300">
             <Header
                 username={userProfile.username}
                 theme={theme}
@@ -406,14 +411,15 @@ export const MainLayout: React.FC = () => {
                 onLogout={logout}
                 appIcon={appIcon}
             />
-            <main>
+            <main className="pt-20 pb-24 md:pb-0">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     <Outlet context={{ appIcon, setAppIcon }} />
                 </div>
             </main>
+            <BottomNav />
             <button
                 onClick={() => setQuickAddModalOpen(true)}
-                className="fixed bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110 z-30"
+                className="fixed bottom-20 md:bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110 z-30"
                 aria-label="Añadir registro rápido"
             >
                 <PlusIcon className="w-6 h-6" />
