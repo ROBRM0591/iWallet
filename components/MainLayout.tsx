@@ -6,10 +6,10 @@ import { AppData, DailyExpense, Income, MovementTypeName, Payment } from '../typ
 import { COLOR_PALETTES } from '../constants';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
-import { getNextPeriodToPay, generateSequentialId } from './utils';
+import { getNextPeriodToPay, generateSequentialId, toDateKey } from './utils';
 import { PlusIcon, CloseIcon } from './Icons';
 
-type Theme = 'light' | 'dark';
+type Theme = 'light' | 'dark' | 'system';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
@@ -33,10 +33,10 @@ const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, chi
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
-                <div className="flex justify-between items-center p-4 border-b border-white/20">
+            <div className="bg-white dark:bg-slate-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
+                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
                     <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-200">
+                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
                         <CloseIcon className="w-6 h-6" />
                     </button>
                 </div>
@@ -56,7 +56,7 @@ interface QuickAddModalProps {
 const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, setData }) => {
     const [activeTab, setActiveTab] = useState<'expense' | 'payment' | 'income'>('expense');
     
-    const todayISO = new Date().toISOString().split('T')[0];
+    const todayISO = toDateKey(new Date());
     const [expenseState, setExpenseState] = useState({ conceptId: '', amount: 0, date: todayISO });
     const [incomeState, setIncomeState] = useState({
         periodType: '1ra Quincena',
@@ -70,8 +70,8 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
     const [errors, setErrors] = useState<Record<string, string>>({});
     
     const movGastoId = useMemo(() => data.movementTypes.find(m => m.name === MovementTypeName.GASTO)?.id, [data.movementTypes]);
-    const diarioCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Diario')?.id, [data.costTypes]);
-    const expenseConcepts = useMemo(() => data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === diarioCostTypeId), [data.concepts, movGastoId, diarioCostTypeId]);
+    const variableCostTypeIdForDaily = useMemo(() => data.costTypes.find(ct => ct.name === 'Variable')?.id, [data.costTypes]);
+    const expenseConcepts = useMemo(() => data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === variableCostTypeIdForDaily), [data.concepts, movGastoId, variableCostTypeIdForDaily]);
     
     const fijoCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Fijo')?.id, [data.costTypes]);
     const variableCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Variable')?.id, [data.costTypes]);
@@ -123,7 +123,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
             id: generateSequentialId('GD', data.dailyExpenses),
             conceptId: expenseState.conceptId,
             amount: expenseState.amount,
-            date: new Date(expenseState.date).toISOString()
+            date: new Date(`${expenseState.date}T00:00:00`).toISOString()
         };
         setData({ ...data, dailyExpenses: [...data.dailyExpenses, newExpense] });
         setExpenseState({ conceptId: '', amount: 0, date: todayISO });
@@ -146,7 +146,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
             id: generateSequentialId('IN', data.incomes),
             description: incomeState.description,
             amount: incomeState.amount,
-            date: new Date(incomeState.date).toISOString()
+            date: new Date(`${incomeState.date}T00:00:00`).toISOString()
         };
         setData({ ...data, incomes: [...data.incomes, newIncome] });
         setIncomeState({ periodType: '1ra Quincena', month: (new Date().getMonth() + 1).toString().padStart(2, '0'), year: new Date().getFullYear().toString(), amount: 0, date: todayISO, description: '' });
@@ -172,7 +172,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
         const newPayment: Payment = {
             id: generateSequentialId('PA', allPayments),
             amount,
-            date: new Date(date).toISOString(),
+            date: new Date(`${date}T00:00:00`).toISOString(),
             period: period,
         };
 
@@ -202,15 +202,15 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Registro Rápido">
-             <div className="border-b border-white/20">
+             <div className="border-b border-gray-200 dark:border-white/20">
                 <nav className="-mb-px flex space-x-4" aria-label="Tabs">
-                    <button onClick={() => handleTabChange('expense')} className={`${activeTab === 'expense' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
+                    <button onClick={() => handleTabChange('expense')} className={`${activeTab === 'expense' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
                         Gasto Diario
                     </button>
-                    <button onClick={() => handleTabChange('payment')} className={`${activeTab === 'payment' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
+                    <button onClick={() => handleTabChange('payment')} className={`${activeTab === 'payment' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
                         Gasto Planificado
                     </button>
-                    <button onClick={() => handleTabChange('income')} className={`${activeTab === 'income' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
+                    <button onClick={() => handleTabChange('income')} className={`${activeTab === 'income' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
                         Ingreso
                     </button>
                 </nav>
@@ -236,7 +236,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
                         {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="button" onClick={onClose} className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                         <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Gasto</button>
                     </div>
                 </form>
@@ -248,7 +248,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
                             <option value="">Seleccione un gasto</option>
                             {pendingPlannedExpenses.map(pe => <option key={pe.id} value={pe.id}>{data.concepts.find(c => c.id === pe.conceptId)?.name}</option>)}
                         </select>
-                         {paymentState.period && <p className="text-xs text-gray-400 mt-1">Abono para el periodo {months.find(m => m.value === (Number(paymentState.period.split('-')[1]) - 1).toString().padStart(2, '0'))?.label}. Restante: {formatCurrency(paymentState.remaining)}</p>}
+                         {paymentState.period && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Abono para el periodo {months.find(m => m.value === paymentState.period.split('-')[1])?.label}. Restante: {formatCurrency(paymentState.remaining)}</p>}
                          {errors.expenseId && <p className="text-red-400 text-xs mt-1">{errors.expenseId}</p>}
                     </div>
                     <div>
@@ -262,7 +262,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
                         {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="button" onClick={onClose} className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                         <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Abono</button>
                     </div>
                 </form>
@@ -299,7 +299,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
                         {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="button" onClick={onClose} className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                         <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Ingreso</button>
                     </div>
                 </form>
@@ -310,10 +310,50 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
 
 export const MainLayout: React.FC = () => {
     const { appData, setData, userProfile, logout } = useAuth();
-    const [theme, setTheme] = useLocalStorage<Theme>('iwallet-theme', 'dark');
+    const [theme, setTheme] = useLocalStorage<Theme>('iwallet-theme', 'system');
+    const [palette, setPaletteState] = useLocalStorage('iwallet-palette', COLOR_PALETTES[2]);
     const [appIcon, setAppIcon] = useLocalStorage('iwallet-app-icon', 'wallet');
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isQuickAddModalOpen, setQuickAddModalOpen] = useState(false);
+    const [installPrompt, setInstallPrompt] = useState<any>(null);
+    const [isInstalled, setIsInstalled] = useState(false);
+
+    useEffect(() => {
+        const checkInstalled = () => {
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+            setIsInstalled(isPWA);
+        };
+        checkInstalled();
+
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setInstallPrompt(e);
+            checkInstalled();
+        };
+        const handleAppInstalled = () => {
+            setInstallPrompt(null);
+            setIsInstalled(true);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.addEventListener('appinstalled', handleAppInstalled);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener('appinstalled', handleAppInstalled);
+        };
+    }, []);
+
+
+    const handleInstallClick = async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        const { outcome } = await installPrompt.userChoice;
+        if (outcome === 'accepted') {
+            console.log('User accepted the A2HS prompt');
+        } else {
+            console.log('User dismissed the A2HS prompt');
+        }
+        setInstallPrompt(null);
+    };
 
     const refreshData = useCallback(() => {
         setIsRefreshing(true);
@@ -330,7 +370,26 @@ export const MainLayout: React.FC = () => {
     }, [setData]);
 
     useEffect(() => {
-        document.documentElement.classList.toggle('dark', theme === 'dark');
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        const applyTheme = () => {
+            if (theme === 'system') {
+                document.documentElement.classList.toggle('dark', mediaQuery.matches);
+            } else {
+                document.documentElement.classList.toggle('dark', theme === 'dark');
+            }
+        };
+
+        const handleChange = () => {
+            if (theme === 'system') {
+                applyTheme();
+            }
+        };
+
+        mediaQuery.addEventListener('change', handleChange);
+        applyTheme();
+
+        return () => mediaQuery.removeEventListener('change', handleChange);
     }, [theme]);
     
     useEffect(() => {
@@ -338,19 +397,17 @@ export const MainLayout: React.FC = () => {
         return () => clearInterval(intervalId);
     }, [refreshData]);
 
-    const toggleTheme = useCallback(() => {
-        setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
-    }, [setTheme]);
-
-    const setPalette = useCallback((palette: typeof COLOR_PALETTES[0]) => {
+    const setPalette = useCallback((p: typeof COLOR_PALETTES[0]) => {
+        setPaletteState(p);
         const root = document.documentElement;
-        Object.entries(palette.shades).forEach(([key, value]) => root.style.setProperty(`--color-primary-${key}`, value));
-        root.style.setProperty('--color-primary', palette.hex);
-    }, []);
+        Object.entries(p.shades).forEach(([key, value]) => root.style.setProperty(`--color-primary-${key}`, value));
+        root.style.setProperty('--color-primary', p.hex);
+    }, [setPaletteState]);
     
     useEffect(() => {
-        setPalette(COLOR_PALETTES[2]); // Default to Purple
-    }, [setPalette]);
+        setPalette(palette);
+    }, [palette, setPalette]);
+
 
     useEffect(() => {
         if (!appData || !('Notification' in window) || Notification.permission !== 'granted' || !appData.plannedExpenses) return;
@@ -402,9 +459,9 @@ export const MainLayout: React.FC = () => {
     return (
         <div className="min-h-screen transition-colors duration-300">
             <Header
-                username={userProfile.username}
+                userProfile={userProfile}
                 theme={theme}
-                toggleTheme={toggleTheme}
+                setTheme={setTheme}
                 setPalette={setPalette}
                 refreshData={refreshData}
                 isRefreshing={isRefreshing}
@@ -413,7 +470,7 @@ export const MainLayout: React.FC = () => {
             />
             <main className="pt-20 pb-24 md:pb-0">
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <Outlet context={{ appIcon, setAppIcon }} />
+                    <Outlet context={{ appIcon, setAppIcon, theme, setTheme, setPalette, installPrompt, handleInstallClick, isInstalled }} />
                 </div>
             </main>
             <BottomNav />

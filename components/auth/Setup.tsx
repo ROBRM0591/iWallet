@@ -100,23 +100,23 @@ export const Setup: React.FC = () => {
         <div className="flex flex-col justify-center items-center min-h-screen p-4">
             <div className="w-full max-w-md">
                 <div className="flex justify-center items-center mb-6">
-                    <WalletIcon className="h-12 w-12 text-primary-400" />
-                    <h1 className="text-3xl font-bold ml-3 text-white">iWallet</h1>
+                    <WalletIcon className="h-12 w-12 text-primary-500 dark:text-primary-400" />
+                    <h1 className="text-3xl font-bold ml-3 text-gray-900 dark:text-white">iWallet</h1>
                 </div>
 
-                <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-xl p-8 text-white">
+                <div className="bg-white dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-xl p-8 text-gray-900 dark:text-white">
                     {step === 1 ? (
                         <>
                             <h2 className="text-2xl font-bold text-center mb-1">Crea tu Cuenta Local</h2>
-                            <p className="text-center text-gray-300 mb-6">Esta información se guarda solo en tu dispositivo.</p>
+                            <p className="text-center text-gray-600 dark:text-gray-300 mb-6">Esta información se guarda solo en tu dispositivo.</p>
                             <form onSubmit={handleProfileSubmit} className="space-y-4">
                                 <div>
                                     <input type="text" name="username" placeholder="Nombre de Usuario" value={profileData.username} onChange={handleChange} className="w-full px-4 py-2 rounded-md" />
-                                    {errors.username && <p className="text-red-400 text-xs mt-1">{errors.username}</p>}
+                                    {errors.username && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.username}</p>}
                                 </div>
                                  <div>
                                     <input type="email" name="email" placeholder="Correo Electrónico" value={profileData.email} onChange={handleChange} className="w-full px-4 py-2 rounded-md" />
-                                    {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+                                    {errors.email && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.email}</p>}
                                 </div>
                                 <div className="relative">
                                     <input type={showPin ? 'text' : 'password'} name="pin" placeholder="PIN (4-6 dígitos)" value={profileData.pin} onChange={handleChange} className="w-full px-4 py-2 rounded-md pr-10" />
@@ -124,39 +124,59 @@ export const Setup: React.FC = () => {
                                         {showPin ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                                     </button>
                                 </div>
-                                {errors.pin && <p className="text-red-400 text-xs">{errors.pin}</p>}
+                                {errors.pin && <p className="text-red-500 dark:text-red-400 text-xs">{errors.pin}</p>}
                                 <div className="relative">
                                     <input type={showConfirmPin ? 'text' : 'password'} name="confirmPin" placeholder="Confirmar PIN" value={profileData.confirmPin} onChange={handleChange} className="w-full px-4 py-2 rounded-md pr-10" />
                                     <button type="button" onClick={() => setShowConfirmPin(!showConfirmPin)} className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400" aria-label={showConfirmPin ? 'Ocultar PIN' : 'Mostrar PIN'}>
                                         {showConfirmPin ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                                     </button>
                                 </div>
-                                {errors.confirmPin && <p className="text-red-400 text-xs">{errors.confirmPin}</p>}
+                                {errors.confirmPin && <p className="text-red-500 dark:text-red-400 text-xs">{errors.confirmPin}</p>}
                                 
-                                <hr className="my-4 border-white/20"/>
-                                <p className="text-sm text-gray-300">Preguntas de Seguridad (para recuperación)</p>
+                                <hr className="my-4 border-gray-200 dark:border-white/20"/>
+                                <p className="text-sm text-gray-600 dark:text-gray-300">Preguntas de Seguridad (para recuperación)</p>
                                 
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400">¿En qué fecha inició el noviazgo con tu esposa?</label>
+                                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">¿En qué fecha inició el noviazgo con tu esposa?</label>
                                     <input type="date" name="securityAnswer1" value={profileData.securityAnswer1} onChange={handleChange} className="w-full px-4 py-2 rounded-md mt-1" />
-                                     {errors.securityAnswer1 && <p className="text-red-400 text-xs mt-1">{errors.securityAnswer1}</p>}
+                                     {errors.securityAnswer1 && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.securityAnswer1}</p>}
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-400">Ingresa tu código secreto (6 dígitos numéricos)</label>
+                                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Ingresa tu código secreto (6 dígitos numéricos)</label>
                                     <div className="relative mt-1">
                                         <input type={showSecurityAnswer2 ? 'text' : 'password'} name="securityAnswer2" placeholder="Código Secreto" value={profileData.securityAnswer2} onChange={handleChange} className="w-full px-4 py-2 rounded-md pr-10" pattern="\d{6}" title="Debe ser un código de 6 dígitos."/>
                                         <button type="button" onClick={() => setShowSecurityAnswer2(!showSecurityAnswer2)} className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400" aria-label={showSecurityAnswer2 ? 'Ocultar código' : 'Mostrar código'}>
                                             {showSecurityAnswer2 ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
                                         </button>
                                     </div>
-                                    {errors.securityAnswer2 && <p className="text-red-400 text-xs mt-1">{errors.securityAnswer2}</p>}
+                                    {errors.securityAnswer2 && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.securityAnswer2}</p>}
                                 </div>
 
-                                {errors.general && <p className="text-red-400 text-sm text-center">{errors.general}</p>}
+                                {errors.general && <p className="text-red-500 dark:text-red-400 text-sm text-center">{errors.general}</p>}
                                 <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-4 rounded-lg transition">Siguiente</button>
                             </form>
                         </>
                     ) : (
                         <div className="text-center">
                             <h2 className="text-2xl font-bold mb-4">¡Un último paso!</h2>
-                            
+                            <p className="text-gray-600 dark:text-gray-300 mb-6">Elige cómo quieres empezar:</p>
+                            <div className="space-y-4">
+                                <button onClick={() => handleFinalSetup(DEMO_DATA)} className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-4 rounded-lg transition">
+                                    🚀 Empezar con Datos de Demostración
+                                </button>
+                                <button onClick={() => handleFinalSetup(BLANK_DATA)} className="w-full bg-gray-200 dark:bg-white/20 hover:bg-gray-300 dark:hover:bg-white/30 text-gray-800 dark:text-white font-bold py-3 px-4 rounded-lg transition">
+                                    📋 Empezar con una Plantilla en Blanco
+                                </button>
+                                <button onClick={handleImportClick} className="w-full bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 font-bold py-3 px-4 rounded-lg transition">
+                                    📥 Importar desde un Respaldo (.iwallet)
+                                </button>
+                                <input type="file" ref={fileInputRef} onChange={handleFileImport} className="hidden" accept=".iwallet,application/json" />
+                            </div>
+                            {errors.general && <p className="text-red-500 dark:text-red-400 text-sm text-center mt-4">{errors.general}</p>}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};

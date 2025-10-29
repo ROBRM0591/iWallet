@@ -1,5 +1,5 @@
 {
-  "name": "💳-iwallet-2.1",
+  "name": "💳-iwallet",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,8 @@
     "react": "^19.2.0",
     "recharts": "^3.2.1",
     "react-router-dom": "^7.9.4",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "@google/genai": "^0.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

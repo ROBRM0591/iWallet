@@ -15,6 +15,7 @@ interface AuthContextType {
   recoverPin: (answers: { answer1: string; answer2: string }, newPin: string) => Promise<boolean>;
   verifySecurityAnswers: (answers: { answer1: string; answer2: string }) => Promise<boolean>;
   setData: (data: AppData) => void;
+  updateUserProfile: (updatedProfile: Partial<UserProfile>) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,31 +27,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     const bootstrap = async () => {
-        // To temporarily disable the login system for development/demo,
-        // we check if a user profile exists. If not, we create a default one.
-        // Then, we automatically set the user as authenticated.
-        if (!localSession.userProfile) {
-            const pinHash = await hashString('1234');
-            const securityAnswer2Hash = await hashString('123456');
-            const defaultProfile: UserProfile = {
-                username: 'Usuario',
-                email: 'usuario@iwallet.app',
-                pinHash,
-                securityAnswer1: '2024-01-01',
-                securityAnswer2Hash,
-            };
-            setLocalSession({ userProfile: defaultProfile, appData: BLANK_DATA });
-        } else if (!localSession.appData) {
-            // If profile exists but data is missing, provide initial data.
-            setLocalSession(prev => ({ ...prev, appData: BLANK_DATA }));
-        }
-
+      // If there's no user profile or data, it's the first run or data is cleared.
+      if (!localSession.userProfile || !localSession.appData) {
+        // Create default data.
+        const pinHash = await hashString('1234');
+        const securityAnswer2Hash = await hashString('123456');
+        // Set the default session. This will trigger a re-render and this useEffect will run again.
+        setLocalSession({
+          userProfile: {
+            username: 'Usuario',
+            email: 'usuario@iwallet.app',
+            pinHash,
+            securityAnswer1: '2024-01-01',
+            securityAnswer2Hash,
+            avatar: ''
+          },
+          appData: BLANK_DATA
+        });
+        // We wait for the next run of the effect when localSession is populated.
+      } else {
+        // If we have a user profile, we can proceed.
+        // For this app's logic, if a profile exists, we treat them as authenticated (auto-login).
         setIsAuthenticated(true);
+        // Now that we've established the state, we can stop loading.
         setIsLoading(false);
+      }
     };
 
     bootstrap();
-  }, []);
+  }, [localSession, setLocalSession]);
 
   const login = async (pin: string): Promise<boolean> => {
     if (!localSession.userProfile) return false;
@@ -79,6 +84,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         pinHash,
         securityAnswer1: profile.securityAnswer1,
         securityAnswer2Hash,
+        avatar: '',
     };
     
     setLocalSession({ userProfile: newUserProfile, appData: initialData });
@@ -111,6 +117,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLocalSession(prev => ({ ...prev, appData: data }));
     };
 
+    const updateUserProfile = (updatedProfile: Partial<UserProfile>) => {
+        setLocalSession(prev => {
+            if (!prev.userProfile) return prev;
+            return {
+                ...prev,
+                userProfile: {
+                    ...prev.userProfile,
+                    ...updatedProfile
+                }
+            };
+        });
+    };
+
   return (
     <AuthContext.Provider value={{
       isAuthenticated,
@@ -122,7 +141,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setupAccount,
       recoverPin,
       verifySecurityAnswers,
-      setData
+      setData,
+      updateUserProfile
     }}>
       {children}
     </AuthContext.Provider>

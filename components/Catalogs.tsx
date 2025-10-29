@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppData, CatalogItem, Category, Concept, CostType, MovementType, MovementTypeName } from '../types';
-import { CloseIcon, PlusIcon, EditIcon, DeleteIcon, ChevronDownIcon, ChevronUpIcon, WarningIcon, CheckCircleIcon, ArrowsUpDownIcon, TagIcon } from './Icons';
+import { CloseIcon, PlusIcon, EditIcon, DeleteIcon, ChevronDownIcon, ChevronUpIcon, WarningIcon, CheckCircleIcon, ArrowsUpDownIcon, TagIcon, DownloadIcon, ArrowUpIcon } from './Icons';
 import { CsvTools, CsvHeader } from './CsvTools';
 import { useAuth } from '../contexts/AuthContext';
 import { generateSequentialId } from './utils';
+import { IconPicker } from './IconPicker';
+import { IconDisplay } from './IconDisplay';
 
 type CatalogKey = keyof Pick<AppData, 'categories' | 'costTypes' | 'movementTypes' | 'concepts'>;
 declare const XLSX: any;
@@ -35,19 +37,19 @@ const ConfirmationModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-white">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/50">
-                    <WarningIcon className="h-6 w-6 text-red-300" />
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-gray-900 dark:text-white">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50">
+                    <WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" />
                 </div>
                 <h3 className="text-lg leading-6 font-bold mt-4">{title}</h3>
                 <div className="mt-2">
-                    <p className="text-sm text-gray-400">{message}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
                 </div>
                 <div className="mt-6 flex justify-center gap-4">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition"
+                        className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg transition"
                     >
                         Cancelar
                     </button>
@@ -86,15 +88,15 @@ const SuccessToast: React.FC<{
             }`}
         >
             {isOpen && (
-                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-300" />
+                 <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-gray-900 dark:text-white">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
                     </div>
                     <div className="flex-grow">
                         <p className="font-bold">{title}</p>
-                        <p className="text-sm text-gray-300">{message}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
                     </div>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
+                     <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">&times;</button>
                 </div>
             )}
         </div>
@@ -129,10 +131,10 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-      <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all">
-        <div className="flex justify-between items-center p-4 border-b border-white/20">
+      <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all">
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
           <h3 className="text-xl font-bold">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-200 transition">
+          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition">
             <CloseIcon className="w-6 h-6" />
           </button>
         </div>
@@ -163,20 +165,20 @@ const ImportPreviewModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-2xl shadow-2xl w-full max-w-lg m-4 transform transition-all p-6">
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-lg m-4 transform transition-all p-6">
                 <h3 className="text-lg leading-6 font-bold">Confirmar Importación</h3>
                 <div className="mt-4">
-                    <p className="text-sm text-gray-300">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
                         Se importarán los siguientes catálogos desde el archivo <strong>{fileName}</strong>. Esta acción reemplazará todos los datos de catálogos existentes.
                     </p>
-                    <div className="mt-4 max-h-60 overflow-y-auto bg-black/20 p-3 rounded-lg">
+                    <div className="mt-4 max-h-60 overflow-y-auto bg-gray-100 dark:bg-black/20 p-3 rounded-lg">
                         <h4 className="font-semibold text-sm mb-2">Hojas/Tablas encontradas:</h4>
                         {sheets.length > 0 ? (
-                            <ul className="list-disc list-inside space-y-1 text-sm text-gray-300">
+                            <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-300">
                                 {sheets.map((sheet, index) => <li key={index}>{sheet}</li>)}
                             </ul>
                         ) : (
-                            <p className="text-sm text-gray-400">No se encontraron tablas o pestañas válidas en el archivo.</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">No se encontraron tablas o pestañas válidas en el archivo.</p>
                         )}
                     </div>
                 </div>
@@ -184,7 +186,7 @@ const ImportPreviewModal: React.FC<{
                     <button
                         type="button"
                         onClick={onClose}
-                        className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition"
+                        className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg transition"
                     >
                         Cancelar
                     </button>
@@ -294,16 +296,16 @@ function CatalogManager<T extends CatalogItem>({ title, singularTitle, items, re
 
 const CollapsibleCatalog: React.FC<{ title: string; children: React.ReactNode; isOpen: boolean; onToggle: () => void; }> = ({ title, children, isOpen, onToggle }) => {
     return (
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-lg text-white">
+        <div className="rounded-2xl shadow-lg transition-colors duration-300 bg-white dark:bg-black/20 backdrop-blur-xl border border-gray-200/80 dark:border-white/20 text-gray-800 dark:text-white">
             <button
                 onClick={onToggle}
                 className="w-full flex justify-between items-center p-6 text-left"
             >
                 <h2 className="text-2xl font-bold">{title}</h2>
-                {isOpen ? <ChevronUpIcon className="w-6 h-6 text-primary-400" /> : <ChevronDownIcon className="w-6 h-6 text-gray-400" />}
+                {isOpen ? <ChevronUpIcon className="w-6 h-6 text-primary-500" /> : <ChevronDownIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" />}
             </button>
             {isOpen && (
-                <div className="px-6 pb-6 border-t border-white/20">
+                <div className="px-6 pb-6 border-t border-gray-200/80 dark:border-white/20">
                     {children}
                 </div>
             )}
@@ -320,22 +322,22 @@ const GenericTable: React.FC<{
     <div className="overflow-x-auto">
         <table className="w-full text-left">
             <thead>
-                <tr className="border-b border-white/20">
+                <tr className="border-b border-gray-300 dark:border-white/20">
                     <th className="p-3">Nombre</th>
                     <th className="p-3 text-right">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {items.map(item => (
-                    <tr key={item.id} className="border-b border-white/10 hover:bg-white/10">
+                    <tr key={item.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10">
                         <td className="p-3">
-                             <button onClick={() => onEdit(item)} className="text-left font-medium text-white hover:text-primary-400 hover:underline">
+                             <button onClick={() => onEdit(item)} className="text-left font-medium text-gray-800 dark:text-white hover:text-primary-500 dark:hover:text-primary-400 hover:underline">
                                 {item.name}
                             </button>
                         </td>
                         <td className="p-3 text-right">
-                            <button onClick={() => onEdit(item)} className="text-primary-400 hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
-                            <button onClick={() => onDelete(item.id)} className="text-red-400 hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
+                            <button onClick={() => onEdit(item)} className="text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
+                            <button onClick={() => onDelete(item.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
                         </td>
                     </tr>
                 ))}
@@ -368,7 +370,7 @@ const MovementTypeForm: React.FC<{
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-gray-300">Nombre</label>
+                <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">Nombre</label>
                  <input
                     type="text"
                     value={name}
@@ -379,7 +381,7 @@ const MovementTypeForm: React.FC<{
                 {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
             </div>
             <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onCancel} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                 <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
             </div>
         </form>
@@ -443,7 +445,7 @@ const CostTypeForm: React.FC<{
                  {errors.movementTypeId && <p className="text-red-500 text-xs mt-1">{errors.movementTypeId}</p>}
             </div>
             <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onCancel} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                 <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
             </div>
         </form>
@@ -459,7 +461,7 @@ const CostTypeTable: React.FC<{
     <div className="overflow-x-auto">
         <table className="w-full text-left">
             <thead>
-                <tr className="border-b border-white/20">
+                <tr className="border-b border-gray-300 dark:border-white/20">
                     <th className="p-3">Nombre</th>
                     <th className="p-3">Tipo de Movimiento</th>
                     <th className="p-3 text-right">Acciones</th>
@@ -467,16 +469,16 @@ const CostTypeTable: React.FC<{
             </thead>
             <tbody>
                 {items.map(item => (
-                    <tr key={item.id} className="border-b border-white/10 hover:bg-white/10">
+                    <tr key={item.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10">
                         <td className="p-3">
-                             <button onClick={() => onEdit(item)} className="text-left font-medium text-white hover:text-primary-400 hover:underline">
+                             <button onClick={() => onEdit(item)} className="text-left font-medium text-gray-800 dark:text-white hover:text-primary-500 dark:hover:text-primary-400 hover:underline">
                                 {item.name}
                             </button>
                         </td>
-                        <td className="p-3 text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name || 'N/A'}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name || 'N/A'}</td>
                         <td className="p-3 text-right">
-                            <button onClick={() => onEdit(item)} className="text-primary-400 hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
-                            <button onClick={() => onDelete(item.id)} className="text-red-400 hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
+                            <button onClick={() => onEdit(item)} className="text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
+                            <button onClick={() => onDelete(item.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
                         </td>
                     </tr>
                 ))}
@@ -496,8 +498,22 @@ const CategoryForm: React.FC<{
         description: item?.description || '',
         movementTypeId: item?.movementTypeId || '',
         costTypeId: item?.costTypeId || '',
+        icon: item?.icon || 'tag',
+        iconColor: item?.iconColor || (document.documentElement.classList.contains('dark') ? 'text-white' : 'text-gray-800'),
     });
     const [errors, setErrors] = useState<{ name?: string; movementTypeId?: string; costTypeId?: string }>({});
+    const [isIconPickerOpen, setIconPickerOpen] = useState(false);
+    const iconPickerContainerRef = useRef<HTMLDivElement>(null);
+
+     useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (iconPickerContainerRef.current && !iconPickerContainerRef.current.contains(event.target as Node)) {
+                setIconPickerOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const filteredCostTypes = useMemo(() => {
         if (!formData.movementTypeId) return [];
@@ -536,11 +552,23 @@ const CategoryForm: React.FC<{
         }
     };
 
+    const handleIconSelect = (details: { icon: string; color: string; }) => {
+        setFormData(prev => ({ ...prev, icon: details.icon, iconColor: details.color }));
+    };
+
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className="block text-sm font-medium">Nombre</label>
-                <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm" />
+                 <div className="flex items-center gap-2 mt-1">
+                    <div className="relative" ref={iconPickerContainerRef}>
+                        <button type="button" onClick={() => setIconPickerOpen(prev => !prev)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
+                            <IconDisplay icon={formData.icon} iconColor={formData.iconColor} className="w-6 h-6" />
+                        </button>
+                        {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} currentColor={formData.iconColor} />}
+                    </div>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="block w-full rounded-md shadow-sm" />
+                </div>
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
             <div>
@@ -567,7 +595,7 @@ const CategoryForm: React.FC<{
                     name="costTypeId"
                     value={formData.costTypeId} 
                     onChange={handleChange} 
-                    className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-700/50" 
+                    className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" 
                     disabled={!formData.movementTypeId}
                 >
                     <option value="">{formData.movementTypeId ? 'Seleccione...' : 'Primero elija un tipo de movimiento'}</option>
@@ -576,7 +604,7 @@ const CategoryForm: React.FC<{
                 {errors.costTypeId && <p className="text-red-500 text-xs mt-1">{errors.costTypeId}</p>}
             </div>
             <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onCancel} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                 <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
             </div>
         </form>
@@ -592,7 +620,7 @@ const CategoryTable: React.FC<{
     <div className="overflow-x-auto">
         <table className="w-full text-left">
             <thead>
-                <tr className="border-b border-white/20">
+                <tr className="border-b border-gray-300 dark:border-white/20">
                     <th className="p-3">Nombre</th>
                     <th className="p-3">Descripción</th>
                     <th className="p-3">Tipo de Movimiento</th>
@@ -602,18 +630,19 @@ const CategoryTable: React.FC<{
             </thead>
             <tbody>
                 {items.map(item => (
-                    <tr key={item.id} className="border-b border-white/10 hover:bg-white/10">
+                    <tr key={item.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10">
                         <td className="p-3">
-                             <button onClick={() => onEdit(item)} className="text-left font-medium text-white hover:text-primary-400 hover:underline">
-                                {item.name}
+                             <button onClick={() => onEdit(item)} className="text-left font-medium text-gray-800 dark:text-white hover:text-primary-500 dark:hover:text-primary-400 hover:underline flex items-center gap-2">
+                                <IconDisplay icon={item.icon} iconColor={item.iconColor} className="w-5 h-5" />
+                                <span>{item.name}</span>
                             </button>
                         </td>
-                        <td className="p-3 text-sm text-gray-400 truncate max-w-xs">{item.description || 'N/A'}</td>
-                        <td className="p-3 text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name || 'N/A'}</td>
-                        <td className="p-3 text-gray-300">{data.costTypes.find(c => c.id === item.costTypeId)?.name || 'N/A'}</td>
+                        <td className="p-3 text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{item.description || 'N/A'}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name || 'N/A'}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.costTypes.find(c => c.id === item.costTypeId)?.name || 'N/A'}</td>
                         <td className="p-3 text-right">
-                           <button onClick={() => onEdit(item)} className="text-primary-400 hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
-                           <button onClick={() => onDelete(item.id)} className="text-red-400 hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
+                           <button onClick={() => onEdit(item)} className="text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
+                           <button onClick={() => onDelete(item.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
                         </td>
                     </tr>
                 ))}
@@ -637,8 +666,22 @@ const ConceptForm: React.FC<{
         name: item?.name || '',
         description: item?.description || '',
         categoryId: isEditingIncome ? INCOME_KEY : (item?.categoryId || ''),
+        icon: item?.icon || 'tag',
+        iconColor: item?.iconColor || (document.documentElement.classList.contains('dark') ? 'text-white' : 'text-gray-800'),
     });
     const [errors, setErrors] = useState<{ name?: string; categoryId?: string; }>({});
+    const [isIconPickerOpen, setIconPickerOpen] = useState(false);
+    const iconPickerContainerRef = useRef<HTMLDivElement>(null);
+
+     useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (iconPickerContainerRef.current && !iconPickerContainerRef.current.contains(event.target as Node)) {
+                setIconPickerOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const derivedState = useMemo(() => {
         if (formData.categoryId === INCOME_KEY) {
@@ -676,6 +719,8 @@ const ConceptForm: React.FC<{
             ...item, 
             name: formData.name, 
             description: formData.description,
+            icon: formData.icon,
+            iconColor: formData.iconColor,
             movementTypeId: derivedState.movementTypeId, 
             categoryId: formData.categoryId === INCOME_KEY ? '' : formData.categoryId, 
             costTypeId: derivedState.costTypeId 
@@ -690,11 +735,23 @@ const ConceptForm: React.FC<{
         }
     };
 
+     const handleIconSelect = (details: { icon: string; color: string; }) => {
+        setFormData(prev => ({ ...prev, icon: details.icon, iconColor: details.color }));
+    };
+
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className="block text-sm font-medium">Nombre</label>
-                <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm" />
+                 <div className="flex items-center gap-2 mt-1">
+                    <div className="relative" ref={iconPickerContainerRef}>
+                        <button type="button" onClick={() => setIconPickerOpen(prev => !prev)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
+                            <IconDisplay icon={formData.icon} iconColor={formData.iconColor} className="w-6 h-6" />
+                        </button>
+                        {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} currentColor={formData.iconColor} />}
+                    </div>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="block w-full rounded-md shadow-sm" />
+                </div>
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
             <div>
@@ -720,20 +777,20 @@ const ConceptForm: React.FC<{
             </div>
             <div>
                 <label className="block text-sm font-medium">Tipo de Costo</label>
-                <select value={derivedState.costTypeId} className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-700/50" disabled>
+                <select value={derivedState.costTypeId} className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" disabled>
                     <option value="">{formData.categoryId ? 'Autocompletado' : 'Seleccione una categoría'}</option>
                     {data.costTypes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
             </div>
             <div>
                 <label className="block text-sm font-medium">Tipo de Movimiento</label>
-                <select value={derivedState.movementTypeId} className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-700/50" disabled>
+                <select value={derivedState.movementTypeId} className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" disabled>
                     <option value="">{formData.categoryId ? 'Autocompletado' : 'Seleccione una categoría'}</option>
                     {data.movementTypes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
             </div>
             <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onCancel} className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                 <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
             </div>
         </form>
@@ -749,7 +806,7 @@ const ConceptTable: React.FC<{
     <div className="overflow-x-auto">
         <table className="w-full text-left">
             <thead>
-                <tr className="border-b border-white/20">
+                <tr className="border-b border-gray-300 dark:border-white/20">
                     <th className="p-3">Nombre</th>
                     <th className="p-3">Descripción</th>
                     <th className="p-3">Tipo de Movimiento</th>
@@ -760,19 +817,20 @@ const ConceptTable: React.FC<{
             </thead>
             <tbody>
                 {items.map(item => (
-                    <tr key={item.id} className="border-b border-white/10 hover:bg-white/10">
+                    <tr key={item.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10">
                         <td className="p-3">
-                             <button onClick={() => onEdit(item)} className="text-left font-medium text-white hover:text-primary-400 hover:underline">
-                                {item.name}
+                             <button onClick={() => onEdit(item)} className="text-left font-medium text-gray-800 dark:text-white hover:text-primary-500 dark:hover:text-primary-400 hover:underline flex items-center gap-2">
+                                <IconDisplay icon={item.icon} iconColor={item.iconColor} className="w-5 h-5" />
+                                <span>{item.name}</span>
                             </button>
                         </td>
-                        <td className="p-3 text-sm text-gray-400 truncate max-w-xs">{item.description || 'N/A'}</td>
-                        <td className="p-3 text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name}</td>
-                        <td className="p-3 text-gray-300">{data.costTypes.find(c => c.id === item.costTypeId)?.name || 'N/A'}</td>
-                        <td className="p-3 text-gray-300">{data.categories.find(c => c.id === item.categoryId)?.name || 'N/A'}</td>
+                        <td className="p-3 text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{item.description || 'N/A'}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.costTypes.find(c => c.id === item.costTypeId)?.name || 'N/A'}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.categories.find(c => c.id === item.categoryId)?.name || 'N/A'}</td>
                         <td className="p-3 text-right">
-                           <button onClick={() => onEdit(item)} className="text-primary-400 hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
-                           <button onClick={() => onDelete(item.id)} className="text-red-400 hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
+                           <button onClick={() => onEdit(item)} className="text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
+                           <button onClick={() => onDelete(item.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
                         </td>
                     </tr>
                 ))}
@@ -881,8 +939,8 @@ export const Catalogs: React.FC = () => {
             const catalogDefs = [
                 { sheetName: 'Tipos de Movimiento', key: 'movementTypes', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }] },
                 { sheetName: 'Tipos de Costo', key: 'costTypes', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }] },
-                { sheetName: 'Categorías', key: 'categories', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripcion' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }] },
-                { sheetName: 'Conceptos', key: 'concepts', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripcion' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'categoryId', label: 'ID Categoria' }] }
+                { sheetName: 'Categorías', key: 'categories', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripcion' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}] },
+                { sheetName: 'Conceptos', key: 'concepts', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripcion' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'categoryId', label: 'ID Categoria' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}] }
             ];
 
             catalogDefs.forEach(def => {
@@ -953,8 +1011,8 @@ export const Catalogs: React.FC = () => {
         const catalogs = [
             { name: 'Tipos de Movimiento', items: data.movementTypes, headers: [{ key: 'id' as keyof MovementType, label: 'ID' }, { key: 'name' as keyof MovementType, label: 'Nombre' }] },
             { name: 'Tipos de Costo', items: data.costTypes, headers: [{ key: 'id' as keyof CostType, label: 'ID' }, { key: 'name' as keyof CostType, label: 'Nombre' }, { key: 'movementTypeId' as keyof CostType, label: 'ID Tipo Movimiento' }] },
-            { name: 'Categorías', items: data.categories, headers: [{ key: 'id' as keyof Category, label: 'ID' }, { key: 'name' as keyof Category, label: 'Nombre' }, { key: 'description' as keyof Category, label: 'Descripcion' }, { key: 'movementTypeId' as keyof Category, label: 'ID Tipo Movimiento' }, { key: 'costTypeId' as keyof Category, label: 'ID Tipo Costo' }] },
-            { name: 'Conceptos', items: data.concepts, headers: [{ key: 'id' as keyof Concept, label: 'ID' }, { key: 'name' as keyof Concept, label: 'Nombre' }, { key: 'description' as keyof Concept, label: 'Descripcion' }, { key: 'movementTypeId' as keyof Concept, label: 'ID Tipo Movimiento' }, { key: 'costTypeId' as keyof Concept, label: 'ID Tipo Costo' }, { key: 'categoryId' as keyof Concept, label: 'ID Categoria' }] }
+            { name: 'Categorías', items: data.categories, headers: [{ key: 'id' as keyof Category, label: 'ID' }, { key: 'name' as keyof Category, label: 'Nombre' }, { key: 'description' as keyof Category, label: 'Descripcion' }, { key: 'movementTypeId' as keyof Category, label: 'ID Tipo Movimiento' }, { key: 'costTypeId' as keyof Category, label: 'ID Tipo Costo' }, {key: 'icon' as keyof Category, label: 'Icono'}, {key: 'iconColor' as keyof Category, label: 'Color Icono'}] },
+            { name: 'Conceptos', items: data.concepts, headers: [{ key: 'id' as keyof Concept, label: 'ID' }, { key: 'name' as keyof Concept, label: 'Nombre' }, { key: 'description' as keyof Concept, label: 'Descripcion' }, { key: 'movementTypeId' as keyof Concept, label: 'ID Tipo Movimiento' }, { key: 'costTypeId' as keyof Concept, label: 'ID Tipo Costo' }, { key: 'categoryId' as keyof Concept, label: 'ID Categoria' }, {key: 'icon' as keyof Concept, label: 'Icono'}, {key: 'iconColor' as keyof Concept, label: 'Color Icono'}] }
         ];
 
         try {
@@ -995,9 +1053,9 @@ export const Catalogs: React.FC = () => {
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {filteredData.movementTypes.map(item => (
-                                <div key={item.id} className="bg-slate-800/50 p-3 rounded-lg flex items-center gap-3">
-                                    <div className={`p-2 rounded-full bg-${item.name === 'Ingreso' ? 'green' : 'red'}-500/20`}>
-                                        <ArrowsUpDownIcon className={`w-5 h-5 text-${item.name === 'Ingreso' ? 'green' : 'red'}-400`}/>
+                                <div key={item.id} className="bg-gray-100 dark:bg-slate-800/50 p-3 rounded-lg flex items-center gap-3">
+                                    <div className={`p-2 rounded-full ${item.name === 'Ingreso' ? 'bg-green-100 dark:bg-green-500/20' : 'bg-red-100 dark:bg-red-500/20'}`}>
+                                        <ArrowsUpDownIcon className={`w-5 h-5 ${item.name === 'Ingreso' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}/>
                                     </div>
                                     <span className="font-semibold">{item.name}</span>
                                 </div>
@@ -1018,9 +1076,9 @@ export const Catalogs: React.FC = () => {
                      <div className="space-y-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {filteredData.costTypes.map(item => (
-                                <div key={item.id} className="bg-slate-800/50 p-3 rounded-lg flex items-center gap-3">
-                                     <div className="p-2 rounded-full bg-purple-500/20">
-                                        <TagIcon className="w-5 h-5 text-purple-400"/>
+                                <div key={item.id} className="bg-gray-100 dark:bg-slate-800/50 p-3 rounded-lg flex items-center gap-3">
+                                     <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-500/20">
+                                        <TagIcon className="w-5 h-5 text-purple-600 dark:text-purple-400"/>
                                     </div>
                                     <span className="font-semibold">{item.name}</span>
                                 </div>
@@ -1042,7 +1100,7 @@ export const Catalogs: React.FC = () => {
                         onAdd={(item) => handleAdd('categories', item)} onUpdate={(item) => handleUpdate('categories', item)} onDelete={(id) => handleDelete('categories', id)}
                         renderForm={(item, onSave, onCancel) => <CategoryForm item={item as Partial<Category>} data={data} onSave={onSave} onCancel={onCancel} />}
                         renderTable={(items, onEdit, onDelete) => <CategoryTable items={items as Category[]} data={data} onEdit={onEdit as (item: Category) => void} onDelete={onDelete} />}
-                        csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }]}
+                        csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}]}
                         onImport={(d) => handleImport('categories', d)} onExportSuccess={() => handleExportSuccess('Categorías')}
                     />;
             case 'Conceptos':
@@ -1051,7 +1109,7 @@ export const Catalogs: React.FC = () => {
                         onAdd={(item) => handleAdd('concepts', item)} onUpdate={(item) => handleUpdate('concepts', item)} onDelete={(id) => handleDelete('concepts', id)}
                         renderForm={(item, onSave, onCancel) => <ConceptForm item={item as Partial<Concept>} data={data} onSave={onSave} onCancel={onCancel} />}
                         renderTable={(items, onEdit, onDelete) => <ConceptTable items={items as Concept[]} data={data} onEdit={onEdit as (item: Concept) => void} onDelete={onDelete} />}
-                        csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'categoryId', label: 'ID Categoría' }]}
+                        csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'categoryId', label: 'ID Categoría' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}]}
                         onImport={(d) => handleImport('concepts', d)} onExportSuccess={() => handleExportSuccess('Conceptos')}
                     />
             default: return null;
@@ -1063,8 +1121,8 @@ export const Catalogs: React.FC = () => {
             <input type="file" ref={importFileInputRef} onChange={handleImportFileSelect} className="hidden" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
             
             <aside className="w-full md:w-64 flex-shrink-0">
-                 <h2 className="text-xl font-bold mb-4 text-gray-300">Catálogos</h2>
-                 <div className="bg-black/20 p-2 rounded-xl">
+                 <h2 className="text-xl font-bold mb-4 text-gray-600 dark:text-gray-300">Catálogos</h2>
+                 <div className="bg-gray-100/50 dark:bg-black/20 p-2 rounded-xl">
                      <nav className="space-y-1">
                         {catalogSections.map(section => {
                             const isActive = activeCatalog === section.name;
@@ -1073,7 +1131,7 @@ export const Catalogs: React.FC = () => {
                                     key={section.name}
                                     onClick={() => setActiveCatalog(section.name)}
                                     className={`w-full flex items-center gap-3 p-3 rounded-lg text-left text-sm font-semibold transition-colors relative ${
-                                        isActive ? 'bg-primary-500/20 text-white' : 'text-gray-400 hover:bg-white/10 hover:text-white'
+                                        isActive ? 'bg-primary-500/20 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white'
                                     }`}
                                 >
                                     <span className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${isActive ? section.color.replace('border-', 'bg-') : 'bg-transparent'}`}></span>
@@ -1088,7 +1146,7 @@ export const Catalogs: React.FC = () => {
 
             <main className="flex-1 min-w-0">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <h1 className="text-3xl font-bold text-white">{activeCatalog}</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{activeCatalog}</h1>
                      <div className="w-full md:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                          <input
                             type="text"
@@ -1100,18 +1158,24 @@ export const Catalogs: React.FC = () => {
                          <div ref={dataMenuRef} className="relative">
                             <button
                                 onClick={() => setIsDataMenuOpen(v => !v)}
-                                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-2 px-4 rounded-lg transition"
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white dark:bg-black/20 hover:bg-gray-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg transition"
                             >
-                                <span>Importar/Exportar CSV</span>
+                                <span>Importar / Exportar Todo</span>
                                 <ChevronDownIcon className="w-4 h-4"/>
                             </button>
                             {isDataMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-56 origin-top-right bg-black/50 backdrop-blur-xl border border-white/20 divide-y divide-white/10 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                                <div className="absolute right-0 mt-2 w-56 origin-top-right bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/10 divide-y divide-gray-200 dark:divide-white/10 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
                                     <div className="px-1 py-1">
-                                        <button onClick={handleExportAllXlsx} className="w-full text-left rounded-md px-2 py-2 text-sm text-gray-200 hover:bg-white/10">Exportar Todo (.xlsx)</button>
+                                        <button onClick={handleExportAllXlsx} className="w-full flex items-center gap-2 text-left rounded-md px-2 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10">
+                                            <DownloadIcon className="w-4 h-4" />
+                                            Exportar Todo (.xlsx)
+                                        </button>
                                     </div>
                                     <div className="px-1 py-1">
-                                        <button onClick={() => importFileInputRef.current?.click()} className="w-full text-left rounded-md px-2 py-2 text-sm text-gray-200 hover:bg-white/10">Importar Catálogos</button>
+                                        <button onClick={() => importFileInputRef.current?.click()} className="w-full flex items-center gap-2 text-left rounded-md px-2 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10">
+                                            <ArrowUpIcon className="w-4 h-4" />
+                                            Importar Todo (.xlsx)
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -1119,7 +1183,7 @@ export const Catalogs: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-black/20 p-4 sm:p-6 rounded-xl">
+                <div className="bg-white/80 dark:bg-black/20 p-4 sm:p-6 rounded-xl">
                     {renderContent()}
                 </div>
             </main>

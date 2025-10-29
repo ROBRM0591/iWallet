@@ -23,6 +23,8 @@ export interface Category extends CatalogItem {
   movementTypeId: string;
   costTypeId: string;
   description?: string;
+  icon?: string;
+  iconColor?: string;
 }
 
 export interface CostType extends CatalogItem {
@@ -39,6 +41,8 @@ export interface Concept extends CatalogItem {
   categoryId?: string;
   costTypeId?: string;
   description?: string;
+  icon?: string;
+  iconColor?: string;
 }
 
 export interface BaseTransaction {
@@ -119,6 +123,7 @@ export interface UserProfile {
   pinHash: string;
   securityAnswer1: string; // Date string
   securityAnswer2Hash: string; // Hash of 6-digit code
+  avatar?: string;
 }
 
 export interface LocalSession {

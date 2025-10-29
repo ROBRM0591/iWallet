@@ -1,17 +1,50 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { AppData } from '../types';
+import { AppData, UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { BLANK_DATA } from '../constants';
-import { WarningIcon, CheckCircleIcon } from './Icons';
+import { BLANK_DATA, COLOR_PALETTES } from '../constants';
+import { WarningIcon, CheckCircleIcon, ComputerDesktopIcon, SunIcon, MoonIcon, DownloadIcon, CloseIcon, EditIcon } from './Icons';
 import { IconDisplay } from './IconDisplay';
 import { IconPicker } from './IconPicker';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
-const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
-        {children}
-    </div>
-);
+type Theme = 'light' | 'dark' | 'system';
+
+interface OutletContextType {
+  appIcon: string;
+  setAppIcon: (icon: string) => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  setPalette: (palette: typeof COLOR_PALETTES[0]) => void;
+  installPrompt: any;
+  handleInstallClick: () => void;
+  isInstalled: boolean;
+}
+
+const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        if (isOpen) document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+            <div className="bg-white dark:bg-slate-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
+                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
+                    <h3 className="text-xl font-bold">{title}</h3>
+                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
+                        <CloseIcon className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6 max-h-[70vh] overflow-y-auto">{children}</div>
+            </div>
+        </div>
+    );
+};
 
 const ConfirmationModal: React.FC<{
     isOpen: boolean;
@@ -32,19 +65,19 @@ const ConfirmationModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-white">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/50">
-                    <WarningIcon className="h-6 w-6 text-red-300" />
+            <div className="bg-white dark:bg-slate-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-gray-900 dark:text-white">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50">
+                    <WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" />
                 </div>
                 <h3 className="text-lg leading-6 font-bold mt-4">{title}</h3>
                 <div className="mt-2">
-                    <p className="text-sm text-gray-400">{message}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
                 </div>
                 <div className="mt-6 flex justify-center gap-4">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition"
+                        className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold py-2 px-4 rounded-lg transition"
                     >
                         Cancelar
                     </button>
@@ -83,40 +116,117 @@ const SuccessToast: React.FC<{
             }`}
         >
             {isOpen && (
-                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-300" />
+                 <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-gray-900 dark:text-white">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
                     </div>
                     <div className="flex-grow">
                         <p className="font-bold">{title}</p>
-                        <p className="text-sm text-gray-300">{message}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
                     </div>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
+                     <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">&times;</button>
                 </div>
             )}
         </div>
     );
 };
 
-const FeatureCard: React.FC<{ title: string, description: string, children: React.ReactNode }> = ({ title, description, children }) => (
-    <GlassCard className="p-6">
-        <h3 className="text-lg font-bold">{title}</h3>
-        <p className="text-gray-300 mt-1 mb-4">{description}</p>
-        {children}
-    </GlassCard>
+const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; label: string; description?: string; disabled?: boolean; }> = ({ enabled, onChange, label, description, disabled = false }) => (
+    <div className={`flex items-center justify-between p-4 bg-gray-100 dark:bg-white/5 rounded-lg transition-all ${disabled ? 'opacity-50' : 'hover:bg-gray-200 dark:hover:bg-white/10'}`}>
+      <div className="flex-1">
+        <p className="font-semibold text-gray-900 dark:text-white">{label}</p>
+        {description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>}
+      </div>
+      <button
+        onClick={() => !disabled && onChange(!enabled)}
+        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+          enabled ? 'bg-primary-600' : 'bg-gray-400 dark:bg-gray-600'
+        } ${disabled ? 'cursor-not-allowed' : ''}`}
+        disabled={disabled}
+      >
+        <span
+          className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+            enabled ? 'translate-x-7' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
 );
 
-interface OutletContextType {
-  appIcon: string;
-  setAppIcon: (icon: string) => void;
-}
+const SettingCard: React.FC<{ icon: string; title: string; children: React.ReactNode; className?: string; }> = ({ icon, title, children, className = '' }) => (
+    <div className={`bg-white dark:bg-black/20 backdrop-blur-xl rounded-2xl border border-gray-200/80 dark:border-white/20 p-6 text-gray-900 dark:text-white ${className}`}>
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-3xl">{icon}</span>
+        <h3 className="text-xl font-bold">{title}</h3>
+      </div>
+      <div className="space-y-3">
+        {children}
+      </div>
+    </div>
+);
+
+const EditProfileForm: React.FC<{ userProfile: UserProfile | null, onSave: (data: Partial<UserProfile>) => void, onCancel: () => void }> = ({ userProfile, onSave, onCancel }) => {
+    const [formData, setFormData] = useState({
+        username: userProfile?.username || '',
+        email: userProfile?.email || '',
+        avatar: userProfile?.avatar || '',
+    });
+    const avatarInputRef = useRef<HTMLInputElement>(null);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                setFormData(prev => ({ ...prev, avatar: reader.result as string }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave(formData);
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex flex-col items-center gap-4">
+                <img 
+                    src={formData.avatar || `https://i.pravatar.cc/96?u=${formData.email}`} 
+                    alt="Avatar" 
+                    className="w-24 h-24 rounded-full object-cover cursor-pointer"
+                    onClick={() => avatarInputRef.current?.click()}
+                />
+                <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" accept="image/*"/>
+                <button type="button" onClick={() => avatarInputRef.current?.click()} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">Cambiar foto</button>
+            </div>
+            <div>
+                <label className="block text-sm font-medium">Nombre de Usuario</label>
+                <input type="text" name="username" value={formData.username} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm"/>
+            </div>
+            <div>
+                <label className="block text-sm font-medium">Correo Electrónico</label>
+                <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm"/>
+            </div>
+            <div className="flex justify-end gap-4 pt-4">
+                <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Cambios</button>
+            </div>
+        </form>
+    );
+};
 
 export const Settings: React.FC = () => {
-    const { appData: data, setData, userProfile } = useAuth();
-    const { appIcon, setAppIcon } = useOutletContext<OutletContextType>();
-    const [notificationPermission, setNotificationPermission] = useState(() => 
-        'Notification' in window ? Notification.permission : 'default'
-    );
+    const { appData: data, setData, userProfile, updateUserProfile } = useAuth();
+    const { appIcon, setAppIcon, theme, setTheme, setPalette, installPrompt, handleInstallClick, isInstalled } = useOutletContext<OutletContextType>();
+    
+    const [activeSection, setActiveSection] = useState('appearance');
+    const [notificationPermission, setNotificationPermission] = useState(() => 'Notification' in window ? Notification.permission : 'default');
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
     const [fileToImport, setFileToImport] = useState<File | null>(null);
@@ -124,7 +234,15 @@ export const Settings: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isIconPickerOpen, setIconPickerOpen] = useState(false);
     const iconPickerContainerRef = useRef<HTMLDivElement>(null);
-
+    const [currentPalette, setCurrentPalette] = useLocalStorage('iwallet-palette', COLOR_PALETTES[2]);
+    const [defaultIconColor, setDefaultIconColor] = useState('text-gray-800 dark:text-white');
+    const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+    
+    useEffect(() => {
+        const isDark = document.documentElement.classList.contains('dark') || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        setDefaultIconColor(isDark ? 'text-white' : 'text-gray-800');
+    }, [theme]);
+    
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (iconPickerContainerRef.current && !iconPickerContainerRef.current.contains(event.target as Node)) {
@@ -132,55 +250,41 @@ export const Settings: React.FC = () => {
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     if (!data) {
         return <div>Cargando...</div>;
     }
 
+    const sections = [
+        { id: 'appearance', label: 'Apariencia', icon: '🎨' },
+        { id: 'notifications', label: 'Notificaciones', icon: '🔔' },
+        { id: 'data', label: 'Datos y Respaldo', icon: '💾' },
+        { id: 'about', label: 'Acerca de', icon: 'ℹ️' }
+    ];
+
     const handleNotificationRequest = () => {
         if (!("Notification" in window)) {
             alert("Este navegador no soporta notificaciones de escritorio.");
         } else if (Notification.permission === "granted") {
-            new Notification("¡Notificaciones ya activadas!", {
-                body: "Recibirás recordatorios de tus próximos pagos.",
-                icon: "https://picsum.photos/192/192"
-            });
+            new Notification("¡Notificaciones ya activadas!", { body: "Recibirás recordatorios de tus próximos pagos.", icon: "/assets/icons/icon-192x192.png" });
         } else if (Notification.permission !== "denied") {
             Notification.requestPermission().then((permission) => {
                 setNotificationPermission(permission);
                 if (permission === "granted") {
-                    new Notification("¡Notificaciones activadas!", {
-                        body: "Ahora recibirás recordatorios de tus próximos pagos.",
-                        icon: "https://picsum.photos/192/192"
-                    });
+                    new Notification("¡Notificaciones activadas!", { body: "Ahora recibirás recordatorios de tus próximos pagos.", icon: "/assets/icons/icon-192x192.png" });
                 }
             });
         }
     };
     
     const handleDefaultReminderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const days = Number(e.target.value);
-        setData({
-            ...data,
-            notifications: {
-                ...data.notifications,
-                defaultReminderDays: days,
-            },
-        });
+        setData({ ...data, notifications: { ...data.notifications, defaultReminderDays: Number(e.target.value) } });
     };
     
     const handleDefaultReminderTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setData({
-            ...data,
-            notifications: {
-                ...data.notifications,
-                defaultReminderTime: e.target.value,
-            },
-        });
+        setData({ ...data, notifications: { ...data.notifications, defaultReminderTime: e.target.value } });
     };
 
     const handleExport = () => {
@@ -196,10 +300,7 @@ export const Settings: React.FC = () => {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            setSuccessInfo({
-                title: 'Exportación Exitosa',
-                message: 'Tus datos se han guardado en un archivo .iwallet en tu carpeta de descargas.'
-            });
+            setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus datos se han guardado en un archivo .iwallet.' });
         } catch (error) {
             console.error("Error al exportar los datos:", error);
             alert("Ocurrió un error al intentar exportar los datos.");
@@ -216,53 +317,21 @@ export const Settings: React.FC = () => {
 
     const executeImport = () => {
         if (!fileToImport) return;
-
         const reader = new FileReader();
         reader.onload = (e) => {
-            const content = e.target?.result as string;
-            if (!content) {
-                alert('El archivo está vacío.');
-                return;
-            }
             try {
-                const parsedData: AppData = JSON.parse(content);
-                const requiredKeys: (keyof AppData)[] = [
-                    'categories', 'costTypes', 'movementTypes', 'concepts',
-                    'dailyExpenses', 'incomes', 'plannedExpenses', 'savingsGoals',
-                    'monthlyBudgets', 'notifications'
-                ];
-                
-                const missingKeys = requiredKeys.filter(key => !(key in parsedData));
-                if (missingKeys.length > 0) {
-                    throw new Error(`Archivo de respaldo inválido. Faltan las siguientes claves: ${missingKeys.join(', ')}.`);
+                const parsedData: AppData = JSON.parse(e.target?.result as string);
+                const requiredKeys: (keyof AppData)[] = ['categories', 'concepts', 'dailyExpenses', 'incomes', 'plannedExpenses', 'savingsGoals', 'monthlyBudgets', 'notifications'];
+                if (requiredKeys.every(key => key in parsedData)) {
+                    setData(parsedData);
+                    setSuccessInfo({ title: '¡Importación Exitosa!', message: 'Tus datos han sido restaurados.' });
+                } else {
+                    throw new Error('Archivo de respaldo inválido o corrupto.');
                 }
-    
-                const arrayKeys: (keyof AppData)[] = [
-                    'categories', 'costTypes', 'movementTypes', 'concepts',
-                    'dailyExpenses', 'incomes', 'plannedExpenses', 'savingsGoals',
-                    'monthlyBudgets'
-                ];
-    
-                for (const key of arrayKeys) {
-                    if (!Array.isArray(parsedData[key])) {
-                        throw new Error(`Archivo de respaldo inválido. La clave '${key}' debería ser un arreglo (array).`);
-                    }
-                }
-    
-                if (typeof parsedData.notifications !== 'object' || parsedData.notifications === null) {
-                    throw new Error(`Archivo de respaldo inválido. La clave 'notifications' debería ser un objeto.`);
-                }
-                setData(parsedData);
-                setSuccessInfo({ title: '¡Importación Exitosa!', message: 'Tus datos han sido restaurados correctamente.' });
-                
             } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
-                console.error("Error al importar el archivo:", error);
-                alert(`Error al procesar el archivo: ${errorMessage}`);
+                alert(`Error al procesar el archivo: ${error instanceof Error ? error.message : 'Formato incorrecto.'}`);
             } finally {
-                if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                }
+                if (fileInputRef.current) fileInputRef.current.value = '';
                 setFileToImport(null);
             }
         };
@@ -273,153 +342,237 @@ export const Settings: React.FC = () => {
         setData(BLANK_DATA);
         setSuccessInfo({ title: 'Datos Restablecidos', message: 'La aplicación ha sido restaurada a su estado inicial.' });
     };
-
-    const handleIconSelect = (details: { icon: string; color: string; }) => {
-        setAppIcon(details.icon);
+    
+    const renderContent = () => {
+        switch (activeSection) {
+            case 'appearance':
+                return (
+                    <div className="space-y-6">
+                        <SettingCard icon="🌓" title="Tema">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <button onClick={() => setTheme('light')} className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center justify-center ${theme === 'light' ? 'border-primary-500 bg-primary-500/10 dark:bg-primary-500/20' : 'border-gray-300 dark:border-white/20 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10'}`}>
+                                    <SunIcon className="w-8 h-8 mb-2 text-yellow-400" />
+                                    <p className="font-semibold text-gray-800 dark:text-white">Claro</p>
+                                </button>
+                                <button onClick={() => setTheme('dark')} className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center justify-center ${theme === 'dark' ? 'border-primary-500 bg-primary-500/10 dark:bg-primary-500/20' : 'border-gray-300 dark:border-white/20 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10'}`}>
+                                    <MoonIcon className="w-8 h-8 mb-2 text-indigo-400" />
+                                    <p className="font-semibold text-gray-800 dark:text-white">Oscuro</p>
+                                </button>
+                                <button onClick={() => setTheme('system')} className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center justify-center ${theme === 'system' ? 'border-primary-500 bg-primary-500/10 dark:bg-primary-500/20' : 'border-gray-300 dark:border-white/20 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10'}`}>
+                                    <ComputerDesktopIcon className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
+                                    <p className="font-semibold text-gray-800 dark:text-white">Sistema</p>
+                                </button>
+                            </div>
+                        </SettingCard>
+                        <SettingCard icon="🎨" title="Color de Acento">
+                            <div className="grid grid-cols-5 sm:grid-cols-9 gap-3">
+                                {COLOR_PALETTES.map(p => (
+                                    <button key={p.name} onClick={() => { setPalette(p); setCurrentPalette(p); }} className={`relative p-2 rounded-xl transition-all ${currentPalette.name === p.name ? 'ring-2 ring-offset-2 ring-primary-500 ring-offset-white dark:ring-offset-slate-800 scale-110' : 'hover:scale-105'}`}>
+                                        <div className="w-full h-10 rounded-lg" style={{ backgroundColor: p.hex }} />
+                                    </button>
+                                ))}
+                            </div>
+                        </SettingCard>
+                        <SettingCard icon="📱" title="Ícono de la App" className={isIconPickerOpen ? 'relative z-10' : ''}>
+                            <div className="flex items-center gap-4">
+                                <p className="font-medium">Ícono actual:</p>
+                                <div className="relative" ref={iconPickerContainerRef}>
+                                    <button onClick={() => setIconPickerOpen(p => !p)} className="flex items-center gap-2 p-2 rounded-lg bg-gray-100 dark:bg-black/20 hover:bg-gray-200 dark:hover:bg-black/30 transition">
+                                        <IconDisplay icon={appIcon} className="w-6 h-6 text-primary-500 dark:text-primary-400" />
+                                        <span>Cambiar</span>
+                                    </button>
+                                    {isIconPickerOpen && <IconPicker onSelect={(details) => setAppIcon(details.icon)} onClose={() => setIconPickerOpen(false)} currentColor={defaultIconColor} />}
+                                </div>
+                            </div>
+                        </SettingCard>
+                         <SettingCard icon="📲" title="Acceso Directo">
+                            <div className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                    {isInstalled 
+                                        ? "La aplicación ya está instalada en tu pantalla de inicio." 
+                                        : "Instala iWallet en tu dispositivo para un acceso rápido y una experiencia de pantalla completa, como si fuera una aplicación nativa."
+                                    }
+                                </p>
+                                <button 
+                                    onClick={handleInstallClick} 
+                                    disabled={!installPrompt || isInstalled}
+                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    <DownloadIcon className="w-5 h-5" />
+                                    {isInstalled ? 'Instalada' : 'Añadir a Pantalla de Inicio'}
+                                </button>
+                            </div>
+                        </SettingCard>
+                    </div>
+                );
+            case 'notifications':
+                 return (
+                    <div className="space-y-6">
+                        <SettingCard icon="🔔" title="Notificaciones">
+                             <div className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
+                                <button onClick={handleNotificationRequest} disabled={notificationPermission === 'denied'} className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
+                                    {notificationPermission === 'granted' ? 'Permiso Concedido' : 'Solicitar Permiso'}
+                                </button>
+                                {notificationPermission === 'denied' && <p className="text-red-500 dark:text-red-400 text-sm mt-2">Las notificaciones están bloqueadas en la configuración de tu navegador.</p>}
+                            </div>
+                        </SettingCard>
+                        <SettingCard icon="⏰" title="Recordatorios Predeterminados">
+                            <div className="space-y-3 p-4 bg-gray-100 dark:bg-white/5 rounded-lg">
+                                <div>
+                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">Días antes del vencimiento</label>
+                                    <select value={data.notifications.defaultReminderDays} onChange={handleDefaultReminderChange} className="w-full rounded-lg px-4 py-2">
+                                        <option value="-1">No recordar</option>
+                                        <option value="0">El mismo día</option>
+                                        <option value="1">1 día antes</option>
+                                        <option value="3">3 días antes</option>
+                                        <option value="5">5 días antes</option>
+                                        <option value="7">1 semana antes</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">Hora del recordatorio</label>
+                                    <input type="time" value={data.notifications.defaultReminderTime} onChange={handleDefaultReminderTimeChange} className="w-full rounded-lg px-4 py-2" />
+                                </div>
+                            </div>
+                        </SettingCard>
+                    </div>
+                );
+            case 'data':
+                return (
+                    <div className="space-y-6">
+                        <SettingCard icon="👤" title="Perfil de Usuario">
+                            <div className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200/80 dark:border-white/20">
+                                <div className="flex items-center gap-4">
+                                    <img 
+                                        src={userProfile?.avatar || `https://i.pravatar.cc/64?u=${userProfile?.email}`} 
+                                        alt="Avatar" 
+                                        className="w-16 h-16 rounded-full object-cover"
+                                    />
+                                    <div>
+                                        <p className="font-semibold text-lg text-gray-900 dark:text-white">{userProfile?.username}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">{userProfile?.email}</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setIsEditProfileModalOpen(true)}
+                                    className="w-full mt-4 bg-primary-600/10 hover:bg-primary-600/20 text-primary-700 dark:text-primary-300 dark:hover:bg-primary-500/30 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
+                                >
+                                    <EditIcon className="w-4 h-4" />
+                                    Editar Perfil
+                                </button>
+                            </div>
+                        </SettingCard>
+                        <SettingCard icon="☁️" title="Sincronización en la Nube (DEMO)">
+                             <div className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200/80 dark:border-white/20">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <img src={userProfile?.avatar || `https://i.pravatar.cc/48?u=${userProfile?.email}`} alt="Avatar" className="w-12 h-12 rounded-full object-cover"/>
+                                    <div>
+                                        <p className="font-semibold text-gray-900 dark:text-white">{userProfile?.username}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">{userProfile?.email}</p>
+                                    </div>
+                                </div>
+                                <button disabled className="w-full bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 py-2 rounded-lg font-semibold cursor-not-allowed">
+                                    🔒 Activar Sincronización (Próximamente)
+                                </button>
+                            </div>
+                        </SettingCard>
+                        <SettingCard icon="📤" title="Exportar e Importar">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button onClick={() => fileInputRef.current?.click()} className="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2">
+                                    📥 Importar
+                                </button>
+                                <button onClick={handleExport} className="bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2">
+                                    📤 Exportar
+                                </button>
+                                <input type="file" ref={fileInputRef} onChange={handleImportFileSelect} className="hidden" accept=".iwallet,application/json" />
+                            </div>
+                        </SettingCard>
+                        <div className="bg-red-50 dark:bg-red-600/20 backdrop-blur-xl rounded-xl p-4 border border-red-400/30 dark:border-red-500/30">
+                            <div className="flex items-start gap-3">
+                                <span className="text-2xl mt-1">⚠️</span>
+                                <div className="flex-1">
+                                    <p className="font-semibold text-gray-900 dark:text-white mb-1">Zona Peligrosa</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Esta acción eliminará todos tus datos de forma permanente.</p>
+                                    <button onClick={() => setIsResetConfirmOpen(true)} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                                        🗑️ Restablecer Datos
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'about':
+                return (
+                     <div className="space-y-6">
+                        <SettingCard icon="📱" title="Información de la App">
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center p-3 bg-gray-100 dark:bg-white/5 rounded-lg"><span className="text-gray-600 dark:text-gray-400">Versión</span><span className="font-semibold text-gray-800 dark:text-white">1.0.0</span></div>
+                                <div className="flex justify-between items-center p-3 bg-gray-100 dark:bg-white/5 rounded-lg"><span className="text-gray-600 dark:text-gray-400">Base de datos</span><span className="font-semibold text-gray-800 dark:text-white">Local (Browser)</span></div>
+                            </div>
+                        </SettingCard>
+                        <SettingCard icon="📜" title="Legal">
+                            <div className="space-y-2">
+                                <button className="w-full text-left p-3 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 rounded-lg transition-all flex items-center justify-between"><span className="text-gray-800 dark:text-white">Términos de Servicio</span><span className="text-gray-500 dark:text-gray-400">→</span></button>
+                                <button className="w-full text-left p-3 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 rounded-lg transition-all flex items-center justify-between"><span className="text-gray-800 dark:text-white">Política de Privacidad</span><span className="text-gray-500 dark:text-gray-400">→</span></button>
+                            </div>
+                        </SettingCard>
+                    </div>
+                );
+            default: return null;
+        }
     };
 
     return (
         <div>
-            <h1 className="text-3xl font-bold mb-6 text-white">Ajustes</h1>
-            <div className="space-y-8">
-                 <FeatureCard
-                    title="Personalizar Apariencia"
-                    description="Elige un ícono para el logo de la aplicación. El color se cambia desde la paleta en el encabezado."
-                >
-                    <div className="flex items-center gap-4">
-                        <p className="font-medium">Ícono actual:</p>
-                        <div className="relative" ref={iconPickerContainerRef}>
-                            <button onClick={() => setIconPickerOpen(prev => !prev)} className="flex items-center gap-2 p-2 rounded-lg bg-black/20 hover:bg-black/30 transition">
-                                <IconDisplay icon={appIcon} className="w-6 h-6 text-primary-400" />
-                                <span>Cambiar</span>
-                            </button>
-                             {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} />}
-                        </div>
-                    </div>
-                </FeatureCard>
-
-                <FeatureCard
-                    title="Notificaciones de Vencimiento"
-                    description="Permite que la aplicación te envíe recordatorios cuando se acerque la fecha límite de un pago planificado."
-                >
-                    <button
-                        onClick={handleNotificationRequest}
-                        disabled={notificationPermission === 'denied'}
-                        className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed"
-                    >
-                        {notificationPermission === 'granted' ? 'Notificaciones Activadas' : 'Activar Notificaciones'}
-                    </button>
-                    {notificationPermission === 'denied' && (
-                        <p className="text-red-400 text-sm mt-2">
-                            Las notificaciones están bloqueadas. Para activarlas, ve a la configuración de tu navegador, busca los permisos de este sitio y cambia la opción de "Notificaciones" a "Permitir".
-                        </p>
-                    )}
-                </FeatureCard>
-
-                <FeatureCard
-                    title="Recordatorio de Pagos Predeterminado"
-                    description="Establece con cuántos días de anticipación y a qué hora quieres recibir recordatorios para tus gastos."
-                >
-                    <div className="flex items-center gap-4">
-                        <select
-                            value={data.notifications.defaultReminderDays}
-                            onChange={handleDefaultReminderChange}
-                            className="rounded-lg py-2 px-4"
-                        >
-                            <option value="-1">No recordar</option>
-                            <option value="0">El día del vencimiento</option>
-                            <option value="1">1 día antes</option>
-                            <option value="3">3 días antes</option>
-                            <option value="5">5 días antes</option>
-                            <option value="7">1 semana antes</option>
-                        </select>
-                        <input
-                            type="time"
-                            value={data.notifications.defaultReminderTime}
-                            onChange={handleDefaultReminderTimeChange}
-                            className="rounded-lg py-2 px-4"
-                        />
-                    </div>
-                </FeatureCard>
-
-                <FeatureCard
-                    title="Copia de Seguridad y Restauración"
-                    description="Crea una copia de seguridad de tus datos para restaurarla en otro dispositivo o navegador. La información se gestiona localmente en tu navegador."
-                >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                        <button 
-                            onClick={handleExport}
-                            className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg"
-                        >
-                            Exportar Datos
-                        </button>
-                        <input 
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleImportFileSelect}
-                            className="hidden"
-                            accept=".iwallet,application/json"
-                        />
-                         <button 
-                            onClick={() => fileInputRef.current?.click()}
-                            className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg"
-                        >
-                            Importar Datos
-                        </button>
-                    </div>
-                     <p className="text-xs text-gray-400 mt-3">Sugerencia: Guarda el archivo exportado en un lugar seguro para tener un respaldo.</p>
-                </FeatureCard>
-                
-                <FeatureCard
-                    title="Restablecer Datos de la Aplicación"
-                    description="Restaura la aplicación a su estado inicial. Borra todos los datos actuales (incluyendo catálogos) y deja la aplicación en blanco."
-                >
-                    <button
-                        onClick={() => setIsResetConfirmOpen(true)}
-                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg"
-                    >
-                        Restablecer Datos Ahora
-                    </button>
-                    <p className="text-xs text-gray-400 mt-3">¡Cuidado! Esta acción no se puede deshacer.</p>
-                </FeatureCard>
-
-                 <FeatureCard
-                    title="Sincronización en la Nube (DEMO)"
-                    description="Guarda tus datos de forma segura para acceder a ellos desde cualquier dispositivo."
-                >
-                     <div className="flex items-center gap-4">
-                        <img src={`https://i.pravatar.cc/48?u=${userProfile?.email}`} alt="Avatar de usuario" className="w-12 h-12 rounded-full"/>
-                        <div>
-                            <p className="font-semibold">{userProfile?.username}</p>
-                            <p className="text-sm text-gray-400">{userProfile?.email} (Perfil Local)</p>
-                        </div>
-                    </div>
-                    <div className="mt-4">
-                        <button disabled className="bg-gray-500 text-gray-300 font-bold py-2 px-4 rounded-lg cursor-not-allowed">
-                            Activar Sincronización
-                        </button>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-3">Nota: Esta es una demostración. La funcionalidad completa requiere un servicio de backend.</p>
-                </FeatureCard>
+            <div className="mb-8">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Ajustes</h1>
+                <p className="text-gray-600 dark:text-gray-300">Personaliza iWallet a tu gusto</p>
             </div>
-             <ConfirmationModal
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-1">
+                    <div className="bg-white dark:bg-black/20 backdrop-blur-xl rounded-2xl border border-gray-200/80 dark:border-white/20 p-2 sticky top-24">
+                        <nav className="space-y-1">
+                            {sections.map(section => (
+                                <button
+                                    key={section.id}
+                                    onClick={() => setActiveSection(section.id)}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all ${activeSection === section.id ? 'bg-primary-600 text-white shadow-lg' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10'}`}>
+                                    <span className="text-xl">{section.icon}</span>
+                                    <span>{section.label}</span>
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+                </div>
+                <div className="lg:col-span-3">
+                    {renderContent()}
+                </div>
+            </div>
+            <ConfirmationModal
                 isOpen={isResetConfirmOpen}
                 onClose={() => setIsResetConfirmOpen(false)}
                 onConfirm={handleConfirmReset}
                 title="Restablecer Todos los Datos"
-                message="¡Atención! Esta acción es irreversible y borrará TODOS tus datos (transacciones, presupuestos, metas y catálogos), dejando la aplicación en blanco. Tu perfil de usuario no será modificado. ¿Deseas continuar?"
+                message="¡Atención! Esta acción es irreversible y borrará TODOS tus datos. ¿Deseas continuar?"
             />
             <ConfirmationModal
                 isOpen={isImportConfirmOpen}
-                onClose={() => {
-                    setIsImportConfirmOpen(false);
-                    setFileToImport(null);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                }}
+                onClose={() => { setIsImportConfirmOpen(false); setFileToImport(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                 onConfirm={executeImport}
                 title="Confirmar Importación"
-                message="¿Estás seguro de que quieres importar estos datos? Esta acción sobrescribirá TODA tu información actual de forma irreversible."
+                message="¿Estás seguro? Esta acción sobrescribirá TODA tu información actual de forma irreversible."
             />
+             <Modal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} title="Editar Perfil">
+                <EditProfileForm 
+                    userProfile={userProfile} 
+                    onSave={(updated) => {
+                        updateUserProfile(updated);
+                        setIsEditProfileModalOpen(false);
+                        setSuccessInfo({ title: 'Perfil Actualizado', message: 'Tus datos de perfil han sido guardados.' });
+                    }}
+                    onCancel={() => setIsEditProfileModalOpen(false)}
+                />
+            </Modal>
             <SuccessToast 
                 isOpen={!!successInfo}
                 onClose={() => setSuccessInfo(null)}

@@ -15,7 +15,7 @@ interface Calculator {
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
@@ -27,17 +27,17 @@ const InputField: React.FC<{
     unit: string;
     isCurrency?: boolean;
 }> = ({ label, value, onChange, unit, isCurrency = false }) => (
-    <div className="relative border border-white/20 rounded-md px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-primary-500 focus-within:border-primary-500">
-        <label className="absolute -top-2.5 left-2 -mt-px inline-block px-1 bg-gradient-to-b from-transparent via-gray-800 to-transparent text-xs font-medium text-gray-400">{label}</label>
+    <div className="relative border border-gray-300 dark:border-white/20 rounded-md px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-primary-500 focus-within:border-primary-500">
+        <label className="absolute -top-2.5 left-2 -mt-px inline-block px-1 bg-white dark:bg-gray-800 text-xs font-medium text-gray-500 dark:text-gray-400">{label}</label>
         <div className="flex items-center">
-            {isCurrency && <span className="text-gray-400 sm:text-sm">$</span>}
+            {isCurrency && <span className="text-gray-500 dark:text-gray-400 sm:text-sm">$</span>}
             <input
                 type="number"
                 value={value || ''}
                 onChange={(e) => onChange(Number(e.target.value))}
-                className="block w-full border-0 p-0 text-white placeholder-gray-400 bg-transparent focus:ring-0 sm:text-sm"
+                className="block w-full border-0 p-0 text-gray-900 dark:text-white placeholder-gray-400 bg-transparent focus:ring-0 sm:text-sm"
             />
-            {!isCurrency && <span className="text-gray-400 sm:text-sm">{unit}</span>}
+            {!isCurrency && <span className="text-gray-500 dark:text-gray-400 sm:text-sm">{unit}</span>}
         </div>
     </div>
 );
@@ -78,12 +78,12 @@ interface CalculatorCardProps {
 const CalculatorCard: React.FC<CalculatorCardProps> = ({ calculator, concepts, onUpdate, onDelete }) => {
     return (
         <GlassCard className="p-6 relative">
-            <button onClick={() => onDelete(calculator.id)} className="absolute top-4 right-4 text-gray-400 hover:text-red-400">
+            <button onClick={() => onDelete(calculator.id)} className="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400">
                 <DeleteIcon className="w-5 h-5" />
             </button>
             <div className="space-y-6">
                 <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Concepto de Deuda</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Concepto de Deuda</label>
                     <select
                         value={calculator.conceptId}
                         onChange={(e) => onUpdate(calculator.id, 'conceptId', e.target.value)}
@@ -151,42 +151,42 @@ export const DebtCalculator: React.FC = () => {
     return (
         <div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h1 className="text-3xl font-bold text-white">Calculadora de Deudas</h1>
+                <h1 className="text-3xl font-bold">Calculadora de Deudas</h1>
                 <button onClick={handleAddCalculator} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg transition">
                     <PlusIcon className="w-5 h-5" />
                     Agregar Deuda
                 </button>
             </div>
             
-            <GlassCard className="bg-primary-900/30 p-6 flex flex-col justify-center items-center mb-8">
+            <GlassCard className="bg-primary-100 dark:bg-primary-900/30 p-6 flex flex-col justify-center items-center mb-8">
                 <h2 className="text-2xl font-bold mb-4">Resumen Total</h2>
                  {summary.error ? (
-                    <p className="text-center text-yellow-300">{summary.error}</p>
+                    <p className="text-center text-yellow-500 dark:text-yellow-300">{summary.error}</p>
                 ) : calculators.length === 0 ? (
-                    <p className="text-center text-primary-200">Agrega una deuda para ver el resumen.</p>
+                    <p className="text-center text-primary-700 dark:text-primary-200">Agrega una deuda para ver el resumen.</p>
                 ) : (
                     <div className="w-full">
                         <div className="text-center mb-4">
-                            <p className="text-lg text-primary-200">Tiempo para liquidar todas las deudas</p>
+                            <p className="text-lg text-primary-700 dark:text-primary-200">Tiempo para liquidar todas las deudas</p>
                             <p className="text-4xl font-bold">
                                 {isFinite(summary.months) ? `${years} años y ${remainingMonths} meses` : 'Interminable'}
                             </p>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-primary-500/30">
                             <div className="text-center">
-                                <p className="text-md text-primary-200">Deuda Total</p>
+                                <p className="text-md text-primary-700 dark:text-primary-200">Deuda Total</p>
                                 <p className="text-2xl font-semibold">{formatCurrency(summary.totalDebt)}</p>
                             </div>
                              <div className="text-center">
-                                <p className="text-md text-primary-200">Pago Mensual Total</p>
+                                <p className="text-md text-primary-700 dark:text-primary-200">Pago Mensual Total</p>
                                 <p className="text-2xl font-semibold">{formatCurrency(summary.totalMonthlyPayment)}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-md text-primary-200">Interés Total</p>
+                                <p className="text-md text-primary-700 dark:text-primary-200">Interés Total</p>
                                 <p className="text-2xl font-semibold">{isFinite(summary.totalInterest) ? formatCurrency(summary.totalInterest) : '---'}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-md text-primary-200">Pago Total</p>
+                                <p className="text-md text-primary-700 dark:text-primary-200">Pago Total</p>
                                 <p className="text-2xl font-semibold">{isFinite(summary.totalPaid) ? formatCurrency(summary.totalPaid) : '---'}</p>
                             </div>
                         </div>
@@ -208,7 +208,7 @@ export const DebtCalculator: React.FC = () => {
                 </div>
             ) : (
                 <div className="text-center py-12">
-                    <p className="text-gray-400">No has agregado ninguna deuda para calcular.</p>
+                    <p className="text-gray-500 dark:text-gray-400">No has agregado ninguna deuda para calcular.</p>
                 </div>
             )}
         </div>

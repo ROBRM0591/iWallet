@@ -9,18 +9,19 @@ interface IconPickerProps {
 }
 
 const COLORS = [
-    'text-white',
-    'text-red-400',
-    'text-yellow-400',
-    'text-green-400',
-    'text-blue-400',
-    'text-indigo-400',
-    'text-purple-400',
-    'text-pink-400',
+    'text-gray-800 dark:text-white',
+    'text-red-500 dark:text-red-400',
+    'text-yellow-500 dark:text-yellow-400',
+    'text-green-500 dark:text-green-400',
+    'text-blue-500 dark:text-blue-400',
+    'text-indigo-500 dark:text-indigo-400',
+    'text-purple-500 dark:text-purple-400',
+    'text-pink-500 dark:text-pink-400',
 ];
 
 const convertTextColorToBgColor = (textColorClass: string): string => {
-    return textColorClass.replace('text-', 'bg-');
+    // Handles dark: prefix
+    return textColorClass.split(' ').map(c => c.replace('text-', 'bg-')).join(' ');
 };
 
 export const IconPicker: React.FC<IconPickerProps> = ({ onSelect, onClose, currentColor }) => {
@@ -57,18 +58,18 @@ export const IconPicker: React.FC<IconPickerProps> = ({ onSelect, onClose, curre
 
     return (
         <div 
-          className="absolute z-20 mt-2 w-72 origin-top-right rounded-xl bg-black/50 backdrop-blur-xl border border-white/20 shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none"
+          className="absolute z-50 mt-2 w-64 sm:w-72 origin-top-right rounded-xl bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none"
           role="menu" aria-orientation="vertical" tabIndex={-1}
         >
             <div className="p-4">
-                <p className="text-sm font-medium text-gray-400 mb-3">Seleccionar un ícono</p>
-                <div className="grid grid-cols-5 gap-3">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Seleccionar un ícono</p>
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
                     {Object.entries(PREDEFINED_ICONS).map(([key, { icon: Icon, name }]) => (
                         <button
                             key={key}
                             title={name}
                             onClick={() => { onSelect({ icon: key, color: selectedColor }); onClose(); }}
-                            className="flex items-center justify-center p-2 rounded-lg hover:bg-white/10 transition"
+                            className="flex items-center justify-center p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition"
                         >
                             <Icon className={`w-6 h-6 ${selectedColor}`} />
                         </button>
@@ -76,9 +77,9 @@ export const IconPicker: React.FC<IconPickerProps> = ({ onSelect, onClose, curre
                     <button
                         title="Subir ícono"
                         onClick={handleUploadClick}
-                        className="flex items-center justify-center p-2 rounded-lg bg-white/10 hover:bg-white/20 transition"
+                        className="flex items-center justify-center p-2 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 transition"
                     >
-                        <PlusIcon className="w-6 h-6 text-gray-400" />
+                        <PlusIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" />
                     </button>
                     <input
                         type="file"
@@ -88,16 +89,16 @@ export const IconPicker: React.FC<IconPickerProps> = ({ onSelect, onClose, curre
                         accept="image/png, image/jpeg, image/svg+xml"
                     />
                 </div>
-                <hr className="my-3 border-white/20"/>
-                <p className="text-sm font-medium text-gray-400 mb-3">Seleccionar un color</p>
+                <hr className="my-3 border-gray-200 dark:border-white/20"/>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Seleccionar un color</p>
                 <div className="grid grid-cols-8 gap-2">
                     {COLORS.map(color => (
                         <button
                             key={color}
                             onClick={() => setSelectedColor(color)}
-                            className={`w-6 h-6 rounded-full border-2 border-transparent transition-all ${selectedColor === color ? 'ring-2 ring-offset-2 ring-primary-500 ring-offset-gray-800' : 'ring-0'}`}
+                            className={`w-6 h-6 rounded-full border-2 border-transparent transition-all ${selectedColor === color ? 'ring-2 ring-offset-2 ring-primary-500 ring-offset-white dark:ring-offset-gray-800' : 'ring-0'}`}
                         >
-                           <div className={`w-full h-full rounded-full ${convertTextColorToBgColor(color)}`}></div>
+                           <div className={`w-full h-full rounded-full ${convertTextColorToBgColor(color.split(' ')[0])}`}></div>
                         </button>
                     ))}
                 </div>

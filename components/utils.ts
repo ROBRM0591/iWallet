@@ -115,3 +115,11 @@ export const getStatusInfo = (expense: PlannedExpense, nextPeriodInfo: { period:
         priority
     };
 };
+
+export const toDateKey = (date: Date): string => {
+    // Note: this function uses local timezone of the browser
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};

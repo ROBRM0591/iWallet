@@ -2,9 +2,10 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AppData, DailyExpense, Income } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line } from 'recharts';
-import { DeleteIcon, WarningIcon, CheckCircleIcon } from './Icons';
+import { DeleteIcon, WarningIcon, CheckCircleIcon, SparklesIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
 import { CsvTools, CsvHeader } from './CsvTools';
+import { GoogleGenAI } from '@google/genai';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000) {
@@ -24,7 +25,7 @@ const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
@@ -48,19 +49,19 @@ const ConfirmationModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-white">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/50">
-                    <WarningIcon className="h-6 w-6 text-red-300" />
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-gray-900 dark:text-white">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50">
+                    <WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" />
                 </div>
                 <h3 className="text-lg leading-6 font-bold mt-4">{title}</h3>
                 <div className="mt-2">
-                    <p className="text-sm text-gray-400">{message}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
                 </div>
                 <div className="mt-6 flex justify-center gap-4">
                     <button
                         type="button"
                         onClick={onClose}
-                        className="bg-white/10 hover:bg-white/20 text-white font-bold py-2 px-4 rounded-lg transition"
+                        className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg transition"
                     >
                         Cancelar
                     </button>
@@ -99,15 +100,15 @@ const SuccessToast: React.FC<{
             }`}
         >
             {isOpen && (
-                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-300" />
+                 <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-gray-900 dark:text-white">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
                     </div>
                     <div className="flex-grow">
                         <p className="font-bold">{title}</p>
-                        <p className="text-sm text-gray-300">{message}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
                     </div>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
+                     <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">&times;</button>
                 </div>
             )}
         </div>
@@ -117,8 +118,8 @@ const SuccessToast: React.FC<{
 const CustomTooltipContent = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         return (
-            <div className="p-2 bg-black/50 backdrop-blur-sm border border-white/20 rounded-md shadow-lg text-white">
-                <p className="label font-bold text-gray-200">{label}</p>
+            <div className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-sm border border-gray-200 dark:border-white/20 rounded-md shadow-lg text-gray-900 dark:text-white">
+                <p className="label font-bold text-gray-700 dark:text-gray-200">{label}</p>
                 {payload.map((pld: any, index: number) => (
                     <div key={index} style={{ color: pld.color }}>
                         {`${pld.name}: ${formatFullCurrency(pld.value)}`}
@@ -149,11 +150,11 @@ const TransactionList: React.FC<{
 }> = ({ transactions, onDelete }) => {
     return (
         <GlassCard className="p-6">
-            <h3 className="font-bold text-xl mb-4 text-white">Detalle de Transacciones</h3>
+            <h3 className="font-bold text-xl mb-4">Detalle de Transacciones</h3>
             <div className="overflow-x-auto max-h-96">
                 <table className="w-full text-left">
-                    <thead className="sticky top-0 bg-black/30 backdrop-blur-sm">
-                        <tr className="border-b border-white/20">
+                    <thead className="sticky top-0 bg-gray-100 dark:bg-black/30 backdrop-blur-sm">
+                        <tr className="border-b border-gray-200 dark:border-white/20">
                             <th className="p-3">Fecha</th>
                             <th className="p-3">Concepto</th>
                             <th className="p-3">Categoría</th>
@@ -164,17 +165,17 @@ const TransactionList: React.FC<{
                     </thead>
                     <tbody>
                         {transactions.length === 0 ? (
-                             <tr><td colSpan={6} className="text-center p-8 text-gray-400">No se encontraron transacciones con los filtros seleccionados.</td></tr>
+                             <tr><td colSpan={6} className="text-center p-8 text-gray-500 dark:text-gray-400">No se encontraron transacciones con los filtros seleccionados.</td></tr>
                         ) : (
                             transactions.map(t => (
-                                <tr key={`${t.source}-${t.id}`} className="border-b border-white/10 hover:bg-white/10">
+                                <tr key={`${t.source}-${t.id}`} className="border-b border-gray-200 dark:border-white/10 hover:bg-gray-100/50 dark:hover:bg-white/10">
                                     <td className="p-3 text-sm whitespace-nowrap">{new Date(t.date).toLocaleDateString('es-MX')}</td>
                                     <td className="p-3 font-medium">{t.concept}</td>
                                     <td className="p-3 text-sm">{t.category}</td>
                                     <td className="p-3 text-sm">{t.type}</td>
-                                    <td className={`p-3 text-right font-semibold ${t.source === 'income' ? 'text-green-400' : 'text-red-400'}`}>{formatFullCurrency(t.amount)}</td>
+                                    <td className={`p-3 text-right font-semibold ${t.source === 'income' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{formatFullCurrency(t.amount)}</td>
                                     <td className="p-3 text-right">
-                                        <button onClick={() => onDelete(t.id, t.source, t.expenseId)} className="text-gray-400 hover:text-red-400 p-1" title="Eliminar registro">
+                                        <button onClick={() => onDelete(t.id, t.source, t.expenseId)} className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1" title="Eliminar registro">
                                             <DeleteIcon className="w-5 h-5"/>
                                         </button>
                                     </td>
@@ -203,6 +204,18 @@ export const Reports: React.FC = () => {
     const [categoryFilter, setCategoryFilter] = useState(stateFilters.categoryFilter || 'all');
     const [deleteInfo, setDeleteInfo] = useState<{ id: string, source: TransactionSource, expenseId?: string } | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
+    const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+    const [insight, setInsight] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            setIsDark(document.documentElement.classList.contains('dark'));
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
+    }, []);
 
     useEffect(() => {
         const firstDay = new Date(selectedYear, selectedMonth, 1).toISOString().split('T')[0];
@@ -216,37 +229,39 @@ export const Reports: React.FC = () => {
     }
     
     const { filteredTransactions, categorySpendingData, incomeVsExpenseData, uniqueCategories } = useMemo(() => {
-        const createUtcDate = (dateString: string, endOfDay = false) => {
-            if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-                return endOfDay ? new Date() : new Date(0);
-            }
-            const [year, month, day] = dateString.split('-').map(Number);
-            if (endOfDay) {
-                return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-            }
-            return new Date(Date.UTC(year, month - 1, day));
-        };
+        if (!startDate || !endDate) {
+            return { filteredTransactions: [], categorySpendingData: [], incomeVsExpenseData: [], uniqueCategories: [] };
+        }
         
-        const start = createUtcDate(startDate);
-        const end = createUtcDate(endDate, true);
+        // FIX: `new Date('YYYY-MM-DD')` is parsed as UTC. For timezone consistency,
+        // we parse the date components to ensure it's interpreted in the user's local timezone.
+        const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
+        const start = new Date(sYear, sMonth - 1, sDay);
+        
+        const [eYear, eMonth, eDay] = endDate.split('-').map(Number);
+        const end = new Date(eYear, eMonth - 1, eDay);
+        end.setHours(23, 59, 59, 999);
 
         // 1. Build a complete list of all transactions within the date range
         const allTransactions: Transaction[] = [];
         data.incomes.forEach(income => {
-            if (new Date(income.date) >= start && new Date(income.date) <= end) {
+            const incomeDate = new Date(income.date);
+            if (incomeDate >= start && incomeDate <= end) {
                 allTransactions.push({ id: income.id, source: 'income', type: 'Ingreso', date: income.date, concept: income.description, category: 'N/A', amount: income.amount });
             }
         });
         data.dailyExpenses.forEach(expense => {
-            if (new Date(expense.date) >= start && new Date(expense.date) <= end) {
+            const expenseDate = new Date(expense.date);
+            if (expenseDate >= start && expenseDate <= end) {
                 const concept = data.concepts.find(c => c.id === expense.conceptId);
                 const category = data.categories.find(cat => cat.id === concept?.categoryId)?.name || 'Sin Categoría';
                 allTransactions.push({ id: expense.id, source: 'daily', type: 'Gasto Diario', date: expense.date, concept: concept?.name || 'N/A', category, amount: expense.amount });
             }
         });
         data.plannedExpenses.forEach(expense => {
-            expense.payments.forEach(payment => {
-                 if (new Date(payment.date) >= start && new Date(payment.date) <= end) {
+            (expense.payments || []).forEach(payment => {
+                 const paymentDate = new Date(payment.date);
+                 if (paymentDate >= start && paymentDate <= end) {
                     const concept = data.concepts.find(c => c.id === expense.conceptId);
                     const category = data.categories.find(cat => cat.id === concept?.categoryId)?.name || 'Sin Categoría';
                     allTransactions.push({ id: payment.id, source: 'planned', expenseId: expense.id, type: 'Gasto Planificado', date: payment.date, concept: concept?.name || 'N/A', category, amount: payment.amount });
@@ -260,7 +275,7 @@ export const Reports: React.FC = () => {
         
         allTransactions.forEach(t => {
             const date = new Date(t.date);
-            const monthKey = `${date.getUTCFullYear()}-${(date.getUTCMonth() + 1).toString().padStart(2, '0')}`;
+            const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
             if (!monthMap.has(monthKey)) {
                 monthMap.set(monthKey, { ingresos: 0, gastos: 0 });
             }
@@ -281,9 +296,10 @@ export const Reports: React.FC = () => {
             .map(([month, values]) => ({ month, ...values }))
             .sort((a, b) => a.month.localeCompare(b.month))
             .map(({ month, ingresos, gastos }) => {
-                const date = new Date(`${month}-02T00:00:00Z`);
+                const [year, monthNum] = month.split('-').map(Number);
+                const date = new Date(year, monthNum - 1, 1);
                 return {
-                    month: date.toLocaleString('es-MX', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+                    month: date.toLocaleString('es-MX', { month: 'short', year: '2-digit' }),
                     Ingresos: ingresos,
                     Gastos: gastos,
                 };
@@ -335,7 +351,7 @@ export const Reports: React.FC = () => {
                         if (pe.id === deleteInfo.expenseId) {
                             return {
                                 ...pe,
-                                payments: pe.payments.filter(p => p.id !== deleteInfo.id),
+                                payments: (pe.payments || []).filter(p => p.id !== deleteInfo.id),
                             };
                         }
                         return pe;
@@ -394,20 +410,64 @@ export const Reports: React.FC = () => {
         { key: 'date', label: 'Fecha (ISO)' },
     ];
 
+    const generateInsight = async () => {
+        setIsGenerating(true);
+        setInsight('');
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            
+            const totalIncome = incomeVsExpenseData.reduce((sum, item) => sum + item.Ingresos, 0);
+            const totalExpense = incomeVsExpenseData.reduce((sum, item) => sum + item.Gastos, 0);
+
+            const dataForPrompt = {
+                period: `${months[selectedMonth].label} ${selectedYear}`,
+                totalIncome,
+                totalExpense,
+                netBalance: totalIncome - totalExpense,
+                categorySpending: categorySpendingData,
+            };
+    
+            const prompt = `
+                You are a helpful financial assistant. Analyze the following financial summary for the period of ${dataForPrompt.period} and provide a brief, easy-to-understand summary of the user's financial health.
+                Provide 2-3 bullet points with key observations and one actionable tip.
+                Speak in a friendly and encouraging tone. Your response must be in Spanish.
+                All amounts are in Mexican Pesos (MXN).
+    
+                FINANCIAL SUMMARY:
+                ${JSON.stringify(dataForPrompt, null, 2)}
+    
+                Generate the insight now. Format your response using markdown.
+            `;
+    
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+            
+            setInsight(response.text);
+    
+        } catch (error) {
+            console.error("Error generating insight:", error);
+            setInsight('No se pudo generar el análisis en este momento. Por favor, intenta de nuevo.');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold text-white">Reportes</h1>
+            <h1 className="text-3xl font-bold">Reportes</h1>
 
             {/* Filters */}
             <GlassCard className="p-4 flex flex-wrap items-center gap-4">
                  <div>
                     <label className="text-sm font-medium mr-2">Periodo:</label>
                     <div className="flex items-center gap-2">
-                        <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="bg-black/20 border border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
+                        <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="bg-gray-100 dark:bg-black/20 border border-gray-300 dark:border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
                             {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                         </select>
-                        <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="bg-black/20 border border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
+                        <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="bg-gray-100 dark:bg-black/20 border border-gray-300 dark:border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
                             {years.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
@@ -429,17 +489,31 @@ export const Reports: React.FC = () => {
                 </div>
             </GlassCard>
 
+             {/* AI Insight */}
+            <GlassCard className="p-6 bg-primary-50 dark:bg-primary-900/20">
+                <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-bold text-xl text-primary-800 dark:text-primary-200">Análisis Financiero AI</h3>
+                    <button onClick={generateInsight} disabled={isGenerating} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-primary-400">
+                        <SparklesIcon className="w-5 h-5" />
+                        {isGenerating ? 'Analizando...' : 'Generar Análisis'}
+                    </button>
+                </div>
+                <div className="prose prose-sm dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 p-4 bg-white/50 dark:bg-black/20 rounded-lg min-h-[6rem]">
+                    {isGenerating ? <p>Generando análisis de tus finanzas...</p> : insight ? <p style={{whiteSpace: "pre-wrap"}}>{insight}</p> : <p className="text-gray-500 dark:text-gray-400">Haz clic en "Generar Análisis" para obtener un resumen de tu salud financiera para el periodo seleccionado.</p>}
+                </div>
+            </GlassCard>
+
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <GlassCard className="p-6">
                     <h3 className="font-bold text-xl mb-4">Ingresos vs. Gastos</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <ComposedChart data={incomeVsExpenseData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
-                            <XAxis dataKey="month" tick={{ fill: '#d1d5db' }} />
-                            <YAxis tickFormatter={formatCurrency} tick={{ fill: '#d1d5db' }}/>
+                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"} />
+                            <XAxis dataKey="month" tick={{ fill: isDark ? '#d1d5db' : '#374151' }} />
+                            <YAxis tickFormatter={formatCurrency} tick={{ fill: isDark ? '#d1d5db' : '#374151' }}/>
                             <Tooltip content={<CustomTooltipContent />} />
-                            <Legend wrapperStyle={{ color: '#d1d5db' }} />
+                            <Legend wrapperStyle={{ color: isDark ? '#d1d5db' : '#374151' }} />
                             <Bar dataKey="Ingresos" fill="#22c55e" />
                             <Bar dataKey="Gastos" fill="#ef4444" />
                             <Line type="monotone" dataKey="Ingresos" stroke="#16a34a" strokeWidth={2} dot={false} />
@@ -451,9 +525,9 @@ export const Reports: React.FC = () => {
                     <h3 className="font-bold text-xl mb-4">Gastos por Categoría</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={categorySpendingData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.2)" />
-                            <XAxis type="number" tickFormatter={formatCurrency} tick={{ fill: '#d1d5db' }}/>
-                            <YAxis type="category" dataKey="name" width={100} tick={{ fill: '#d1d5db' }} />
+                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"} />
+                            <XAxis type="number" tickFormatter={formatCurrency} tick={{ fill: isDark ? '#d1d5db' : '#374151' }}/>
+                            <YAxis type="category" dataKey="name" width={100} tick={{ fill: isDark ? '#d1d5db' : '#374151' }} />
                             <Tooltip content={<CustomTooltipContent />} />
                             <Bar dataKey="Gastos" fill="#3b82f6" />
                         </BarChart>
@@ -464,7 +538,7 @@ export const Reports: React.FC = () => {
             <GlassCard className="p-6">
                 <h3 className="font-bold text-xl mb-4">Herramientas de Datos</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-black/20 p-4 rounded-lg">
+                    <div className="bg-gray-100 dark:bg-black/20 p-4 rounded-lg">
                         <h4 className="font-semibold mb-2">Gestión de Ingresos</h4>
                         <CsvTools 
                             entityName="Ingresos" 
@@ -474,7 +548,7 @@ export const Reports: React.FC = () => {
                             onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus ingresos han sido exportados a un archivo CSV.' })}
                         />
                     </div>
-                    <div className="bg-black/20 p-4 rounded-lg">
+                    <div className="bg-gray-100 dark:bg-black/20 p-4 rounded-lg">
                         <h4 className="font-semibold mb-2">Gestión de Gastos Diarios</h4>
                         <CsvTools 
                             entityName="Gastos Diarios" 

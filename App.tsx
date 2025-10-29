@@ -9,6 +9,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { WalletIcon } from './components/Icons';
 import { Dashboard } from './components/Dashboard';
 import { DailyExpenses } from './components/DailyExpenses';
+import { Incomes } from './components/Incomes';
 import { Catalogs } from './components/Catalogs';
 import { Budget } from './components/Budget';
 import { PlannedExpenses } from './components/PlannedExpenses';
@@ -54,6 +55,7 @@ const AppRoutes: React.FC = () => {
                 }
             >
                 <Route index element={<Dashboard />} />
+                <Route path="incomes" element={<Incomes />} />
                 <Route path="daily-expenses" element={<DailyExpenses />} />
                 <Route path="catalogs" element={<Catalogs />} />
                 <Route path="budget" element={<Budget />} />

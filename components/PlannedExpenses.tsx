@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { AppData, PlannedExpense, Frequency, Concept, Payment, Priority } from '../types';
 import { CloseIcon, PlusIcon, EditIcon, DeleteIcon, WarningIcon, CheckCircleIcon, DownloadIcon, ListBulletIcon, PlannedExpenseIcon as CalendarIcon, CurrencyDollarIcon, ChevronDownIcon } from './Icons';
-import { generatePeriods, getNextPeriodToPay, generateSequentialId, getStatusInfo } from './utils';
+import { generatePeriods, getNextPeriodToPay, generateSequentialId, getStatusInfo, toDateKey } from './utils';
 import { IconPicker } from './IconPicker';
 import { IconDisplay } from './IconDisplay';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,8 +13,14 @@ declare const XLSX: any;
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
+const priorityOrder: { [key in Priority]: number } = {
+    [Priority.BAJA]: 1,
+    [Priority.MEDIA]: 2,
+    [Priority.ALTA]: 3,
+};
+
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
@@ -32,10 +38,10 @@ const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, chi
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 text-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all">
-                <div className="flex justify-between items-center p-4 border-b border-white/20">
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all">
+                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
                     <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-200">
+                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
                         <CloseIcon className="w-6 h-6" />
                     </button>
                 </div>
@@ -54,13 +60,13 @@ const ConfirmationModal: React.FC<{ isOpen: boolean; onClose: () => void; onConf
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 text-center p-6 text-white">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-900/50"><WarningIcon className="h-6 w-6 text-red-300" /></div>
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 text-center p-6 text-gray-900 dark:text-white">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50"><WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" /></div>
                 <h3 className="text-lg font-bold mt-4">{title}</h3>
-                <p className="mt-2 text-sm text-gray-400">{message}</p>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p>
                 <div className="mt-6 flex justify-center gap-4">
-                    <button onClick={onClose} className="bg-white/10 hover:bg-white/20 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button onClick={() => { onConfirm(); onClose(); }} className="bg-red-600 hover:red:bg-red-700 font-bold py-2 px-4 rounded-lg">Confirmar</button>
+                    <button onClick={onClose} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button onClick={() => { onConfirm(); onClose(); }} className="bg-red-600 hover:bg-red-700 font-bold py-2 px-4 rounded-lg">Confirmar</button>
                 </div>
             </div>
         </div>
@@ -77,13 +83,13 @@ const SuccessToast: React.FC<{ isOpen: boolean; onClose: () => void; title: stri
     if (!isOpen) return null;
     return (
         <div className="fixed bottom-4 left-4 z-50 w-full max-w-sm transition-all duration-300 transform translate-y-0 opacity-100">
-            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
-                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center"><CheckCircleIcon className="h-6 w-6 text-green-300" /></div>
+            <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-gray-900 dark:text-white">
+                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center"><CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" /></div>
                 <div className="flex-grow">
                     <p className="font-bold">{title}</p>
-                    <p className="text-sm text-gray-300">{message}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
                 </div>
-                <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
+                <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">&times;</button>
             </div>
         </div>
     );
@@ -108,7 +114,7 @@ const PlannedExpenseForm: React.FC<{
     const paymentsByPeriod = useMemo(() => {
         if (!currentItem?.payments) return new Map<string, number>();
         const map = new Map<string, number>();
-        currentItem.payments.forEach(p => {
+        (currentItem.payments || []).forEach(p => {
             map.set(p.period, (map.get(p.period) || 0) + p.amount);
         });
         return map;
@@ -117,7 +123,7 @@ const PlannedExpenseForm: React.FC<{
     const [formState, setFormState] = useState({
         conceptId: currentItem?.conceptId || '',
         icon: currentItem?.icon || 'tag',
-        iconColor: currentItem?.iconColor || 'text-white',
+        iconColor: currentItem?.iconColor || 'text-gray-900 dark:text-white',
         amountPerPeriod: currentItem?.amountPerPeriod || 0,
         startPeriod: currentItem?.startPeriod || new Date().toISOString().slice(0, 7),
         frequency: currentItem?.frequency || Frequency.MENSUAL,
@@ -132,7 +138,7 @@ const PlannedExpenseForm: React.FC<{
     const [isIconPickerOpen, setIconPickerOpen] = useState(false);
     const iconPickerContainerRef = useRef<HTMLDivElement>(null);
     const [paymentAmount, setPaymentAmount] = useState<number>(0);
-    const todayISO = new Date().toISOString().split('T')[0];
+    const todayISO = toDateKey(new Date());
     const [paymentDate, setPaymentDate] = useState(todayISO);
     const [paymentPeriod, setPaymentPeriod] = useState('');
     const [paymentRemaining, setPaymentRemaining] = useState(0);
@@ -221,11 +227,11 @@ const PlannedExpenseForm: React.FC<{
         }
         setPaymentErrors({});
         
-        const allPayments = data.plannedExpenses.flatMap(pe => pe.payments);
+        const allPayments = data.plannedExpenses.flatMap(pe => pe.payments || []);
         const newPayment: Payment = {
             id: generateSequentialId('PA', allPayments),
             amount: paymentAmount,
-            date: new Date(paymentDate).toISOString(),
+            date: new Date(`${paymentDate}T00:00:00`).toISOString(),
             period: paymentPeriod,
         };
 
@@ -239,20 +245,20 @@ const PlannedExpenseForm: React.FC<{
 
     return (
         <div>
-            <div className="border-b border-white/20 mb-4">
+            <div className="border-b border-gray-200 dark:border-white/20 mb-4">
                 <nav className="-mb-px flex space-x-4" aria-label="Tabs">
-                    <button onClick={() => setActiveTab('details')} className={`${activeTab === 'details' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Detalles</button>
-                    <button onClick={() => setActiveTab('periods')} className={`${activeTab === 'periods' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Montos por Periodo</button>
-                    {currentItem?.id && <button onClick={() => setActiveTab('payments')} className={`${activeTab === 'payments' ? 'border-primary-400 text-primary-400' : 'border-transparent text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Pagos</button>}
+                    <button onClick={() => setActiveTab('details')} className={`${activeTab === 'details' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Detalles</button>
+                    <button onClick={() => setActiveTab('periods')} className={`${activeTab === 'periods' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Montos por Periodo</button>
+                    {currentItem?.id && <button onClick={() => setActiveTab('payments')} className={`${activeTab === 'payments' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Pagos</button>}
                 </nav>
             </div>
             {activeTab === 'details' ? (
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium">Concepto</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Concepto</label>
                         <div className="flex items-center gap-2 mt-1">
                             <div className="relative" ref={iconPickerContainerRef}>
-                                <button type="button" onClick={() => setIconPickerOpen(prev => !prev)} className="p-2 border border-white/20 rounded-md bg-white/10">
+                                <button type="button" onClick={() => setIconPickerOpen(prev => !prev)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
                                     <IconDisplay icon={formState.icon} iconColor={formState.iconColor} className="w-6 h-6" />
                                 </button>
                                 {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} currentColor={formState.iconColor} />}
@@ -264,17 +270,17 @@ const PlannedExpenseForm: React.FC<{
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label className="block text-sm font-medium">Monto por Periodo</label><input type="number" name="amountPerPeriod" value={formState.amountPerPeriod} onChange={handleChange} className="mt-1 w-full" /></div>
-                        <div><label className="block text-sm font-medium">Frecuencia</label><select name="frequency" value={formState.frequency} onChange={handleChange} className="mt-1 w-full"><option value={Frequency.MENSUAL}>Mensual</option><option value={Frequency.BIMESTRAL}>Bimestral</option></select></div>
-                        <div><label className="block text-sm font-medium"># de Periodos</label><input type="number" name="periods" value={formState.periods} onChange={handleChange} className="mt-1 w-full" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Monto por Periodo</label><input type="number" name="amountPerPeriod" value={formState.amountPerPeriod} onChange={handleChange} className="mt-1 w-full" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Frecuencia</label><select name="frequency" value={formState.frequency} onChange={handleChange} className="mt-1 w-full"><option value={Frequency.MENSUAL}>Mensual</option><option value={Frequency.BIMESTRAL}>Bimestral</option></select></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300"># de Periodos</label><input type="number" name="periods" value={formState.periods} onChange={handleChange} className="mt-1 w-full" /></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><label className="block text-sm font-medium">Periodo de Inicio</label><input type="month" name="startPeriod" value={formState.startPeriod} onChange={handleChange} className="mt-1 w-full" /></div>
-                        <div><label className="block text-sm font-medium">Día de Corte</label><input type="number" name="cutOffDay" value={formState.cutOffDay} onChange={handleChange} className="mt-1 w-full" min="1" max="31" /></div>
-                        <div><label className="block text-sm font-medium">Día Límite de Pago</label><input type="number" name="dueDay" value={formState.dueDay} onChange={handleChange} className="mt-1 w-full" min="1" max="31" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodo de Inicio</label><input type="month" name="startPeriod" value={formState.startPeriod} onChange={handleChange} className="mt-1 w-full" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Día de Corte</label><input type="number" name="cutOffDay" value={formState.cutOffDay} onChange={handleChange} className="mt-1 w-full" min="1" max="31" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Día Límite de Pago</label><input type="number" name="dueDay" value={formState.dueDay} onChange={handleChange} className="mt-1 w-full" min="1" max="31" /></div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium">Recordatorio</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Recordatorio</label>
                         <div className="flex items-center gap-2 mt-1">
                             <select name="reminderDays" value={formState.reminderDays} onChange={handleChange} className="w-full">
                                 <option value="-1">No recordar</option><option value="0">El día del vencimiento</option><option value="1">1 día antes</option>
@@ -284,13 +290,13 @@ const PlannedExpenseForm: React.FC<{
                         </div>
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onCancel} className="bg-white/10 hover:bg-white/20 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                        <button type="submit" className="bg-primary-600 hover:bg-primary-700 font-bold py-2 px-4 rounded-lg">Guardar</button>
+                        <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="submit" className="bg-primary-600 hover:bg-primary-700 font-bold py-2 px-4 rounded-lg text-white">Guardar</button>
                     </div>
                 </form>
             ) : activeTab === 'periods' ? (
                 <div className="space-y-4">
-                    <p className="text-sm text-gray-300">Ajusta los montos para periodos específicos. Si un campo se deja vacío, se usará el monto por periodo predeterminado de {formatCurrency(formState.amountPerPeriod)}.</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Ajusta los montos para periodos específicos. Si un campo se deja vacío, se usará el monto por periodo predeterminado de {formatCurrency(formState.amountPerPeriod)}.</p>
                     <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
                         {generatedFormPeriods.map((period, index) => {
                             const amountForPeriod = periodOverrides[period] ?? formState.amountPerPeriod;
@@ -299,7 +305,7 @@ const PlannedExpenseForm: React.FC<{
 
                             return (
                                 <div key={period} className="grid grid-cols-3 items-center gap-2">
-                                    <label htmlFor={`period-override-${period}`} className="text-sm font-medium">Periodo {index + 1} ({period}):</label>
+                                    <label htmlFor={`period-override-${period}`} className="text-sm font-medium text-gray-700 dark:text-gray-300">Periodo {index + 1} ({period}):</label>
                                     <div className="relative col-span-2 mt-1">
                                         <input
                                             type="number"
@@ -307,13 +313,13 @@ const PlannedExpenseForm: React.FC<{
                                             placeholder={formatCurrency(formState.amountPerPeriod)}
                                             value={periodOverrides[period] ?? ''}
                                             onChange={(e) => handleOverrideChange(period, e.target.value)}
-                                            className="w-full rounded-md shadow-sm disabled:bg-gray-700/50 disabled:cursor-not-allowed"
+                                            className="w-full rounded-md shadow-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50 disabled:cursor-not-allowed"
                                             disabled={isPaid}
                                             aria-describedby={isPaid ? `paid-info-${period}` : undefined}
                                         />
                                         {isPaid && (
                                             <div id={`paid-info-${period}`} className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none" title={`Periodo cubierto con ${formatCurrency(paidInPeriod)}`}>
-                                                <CheckCircleIcon className="w-5 h-5 text-green-400" />
+                                                <CheckCircleIcon className="w-5 h-5 text-green-500 dark:text-green-400" />
                                             </div>
                                         )}
                                     </div>
@@ -322,8 +328,8 @@ const PlannedExpenseForm: React.FC<{
                         })}
                     </div>
                      <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onCancel} className="bg-white/10 hover:bg-white/20 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                        <button type="button" onClick={handleSubmit} className="bg-primary-600 hover:bg-primary-700 font-bold py-2 px-4 rounded-lg">Guardar Cambios</button>
+                        <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="button" onClick={handleSubmit} className="bg-primary-600 hover:bg-primary-700 font-bold py-2 px-4 rounded-lg text-white">Guardar Cambios</button>
                     </div>
                 </div>
 
@@ -331,13 +337,13 @@ const PlannedExpenseForm: React.FC<{
                 <div className="space-y-4">
                     <div className="max-h-60 overflow-y-auto pr-2">
                         <table className="w-full text-left">
-                           <thead><tr className="border-b border-white/20"><th className="p-2">Periodo</th><th className="p-2">Fecha</th><th className="p-2 text-right">Monto</th></tr></thead>
+                           <thead><tr className="border-b border-gray-200 dark:border-white/20"><th className="p-2">Periodo</th><th className="p-2">Fecha</th><th className="p-2 text-right">Monto</th></tr></thead>
                            <tbody>
-                               {(currentItem?.payments || []).length > 0 ? (currentItem?.payments || []).map(p => <tr key={p.id}><td className="p-2">{p.period}</td><td className="p-2">{new Date(p.date).toLocaleDateString()}</td><td className="p-2 text-right">{formatCurrency(p.amount)}</td></tr>) : <tr><td colSpan={3} className="text-center p-4 text-gray-400">No hay pagos registrados.</td></tr>}
+                               {(currentItem?.payments || []).length > 0 ? (currentItem?.payments || []).map(p => <tr key={p.id}><td className="p-2">{p.period}</td><td className="p-2">{new Date(p.date).toLocaleDateString()}</td><td className="p-2 text-right">{formatCurrency(p.amount)}</td></tr>) : <tr><td colSpan={3} className="text-center p-4 text-gray-500 dark:text-gray-400">No hay pagos registrados.</td></tr>}
                            </tbody>
                         </table>
                     </div>
-                    <div className="border-t border-white/20 pt-4 space-y-2">
+                    <div className="border-t border-gray-200 dark:border-white/20 pt-4 space-y-2">
                         <h4 className="font-bold">Registrar Nuevo Abono</h4>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                             <select value={paymentPeriod} onChange={e => setPaymentPeriod(e.target.value)} className="w-full md:col-span-2">
@@ -348,7 +354,7 @@ const PlannedExpenseForm: React.FC<{
                             <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="w-full"/>
                         </div>
                          {paymentErrors.amount && <p className="text-red-400 text-xs mt-1">{paymentErrors.amount}</p>}
-                        <button onClick={handleAddPayment} className="w-full bg-primary-600 hover:bg-primary-700 font-bold py-2 px-4 rounded-lg">Añadir Pago</button>
+                        <button onClick={handleAddPayment} className="w-full bg-primary-600 hover:bg-primary-700 font-bold py-2 px-4 rounded-lg text-white">Añadir Pago</button>
                     </div>
                 </div>
             )}
@@ -359,7 +365,7 @@ const PlannedExpenseForm: React.FC<{
 const SummaryCard: React.FC<{ title: string; amount: number; colorClass: string; children?: React.ReactNode }> = ({ title, amount, colorClass, children }) => (
     <GlassCard className={`p-4 flex flex-col justify-between ${colorClass}`}>
         <div>
-            <div className="flex justify-between items-center text-gray-200">
+            <div className="flex justify-between items-center text-gray-500 dark:text-gray-200">
                 <h3 className="text-sm font-medium">{title}</h3>
             </div>
             <p className="mt-1 text-2xl font-semibold">{formatCurrency(amount)}</p>
@@ -369,6 +375,7 @@ const SummaryCard: React.FC<{ title: string; amount: number; colorClass: string;
 );
 
 const BalanceProgressCircle: React.FC<{ percentage: number }> = ({ percentage }) => {
+    const isDark = document.documentElement.classList.contains('dark');
     const data = [
         { name: 'Used', value: percentage },
         { name: 'Remaining', value: Math.max(0, 100 - percentage) },
@@ -379,7 +386,7 @@ const BalanceProgressCircle: React.FC<{ percentage: number }> = ({ percentage })
                 <PieChart>
                     <Pie data={data} cx="50%" cy="50%" innerRadius="80%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
                         <Cell fill="#3b82f6" />
-                        <Cell fill="rgba(255, 255, 255, 0.2)" />
+                        <Cell fill={isDark ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)"} />
                     </Pie>
                 </PieChart>
             </ResponsiveContainer>
@@ -401,7 +408,9 @@ export const PlannedExpenses: React.FC = () => {
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
     const [view, setView] = useState<'list' | 'calendar'>('list');
-    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(today);
     const [calendarDate, setCalendarDate] = useState(new Date());
     const [expandedDueKey, setExpandedDueKey] = useState<string | null>(null);
 
@@ -451,7 +460,7 @@ export const PlannedExpenses: React.FC = () => {
 
         const incomeThisMonth = data.incomes.filter(i => { const d = new Date(i.date); return d >= startOfMonth && d <= endOfMonth; }).reduce((sum, i) => sum + i.amount, 0);
         const totalPlannedForMonth = data.plannedExpenses.reduce((sum, pe) => { const periodStr = `${year}-${(month + 1).toString().padStart(2, '0')}`; return sum + (generatePeriods(pe).includes(periodStr) ? (pe.periodOverrides?.[periodStr] ?? pe.amountPerPeriod) : 0);}, 0);
-        const paidThisMonth = data.plannedExpenses.reduce((sum, pe) => sum + pe.payments.filter(p => { const d = new Date(p.date); return d >= startOfMonth && d <= endOfMonth; }).reduce((pSum, p) => pSum + p.amount, 0), 0);
+        const paidThisMonth = data.plannedExpenses.reduce((sum, pe) => sum + (pe.payments || []).filter(p => { const d = new Date(p.date); return d >= startOfMonth && d <= endOfMonth; }).reduce((pSum, p) => pSum + p.amount, 0), 0);
         const availableBalance = incomeThisMonth - paidThisMonth;
         const budgetUsage = incomeThisMonth > 0 ? (totalPlannedForMonth / incomeThisMonth) * 100 : 0;
         
@@ -473,21 +482,21 @@ export const PlannedExpenses: React.FC = () => {
             });
 
             const periods = generatePeriods(expense);
-            periods.forEach(period => {
+            periods.forEach((period, index) => {
                 const paidAmount = paymentsByPeriod.get(period) || 0;
                 const amountForPeriod = expense.periodOverrides?.[period] ?? expense.amountPerPeriod;
 
                 if (paidAmount < amountForPeriod) {
                     const [pYear, pMonth] = period.split('-').map(Number);
                     const dueDate = new Date(pYear, pMonth - 1, expense.dueDay);
-                    dueDate.setUTCHours(0, 0, 0, 0);
-                    const dateKey = dueDate.toISOString().split('T')[0];
+                    const dateKey = toDateKey(dueDate);
 
                     if (!dues.has(dateKey)) dues.set(dateKey, []);
                     dues.get(dateKey)!.push({ ...expense, duePeriod: period, amountForPeriod: amountForPeriod });
                     
-                    const status = getStatusInfo(expense, getNextPeriodToPay(expense));
-                    if (!allDates.has(dateKey) || status.priority > (allDates.get(dateKey) || Priority.BAJA)) {
+                    const status = getStatusInfo(expense, { period, index });
+                    const existingPriority = allDates.get(dateKey) || Priority.BAJA;
+                    if (priorityOrder[status.priority] > priorityOrder[existingPriority]) {
                         allDates.set(dateKey, status.priority);
                     }
                 }
@@ -503,7 +512,7 @@ export const PlannedExpenses: React.FC = () => {
         const duesForMonth: { due: PlannedExpense & { duePeriod: string, amountForPeriod: number }, date: Date }[] = [];
         
         for (let d = new Date(startOfVisibleMonth); d <= endOfVisibleMonth; d.setDate(d.getDate() + 1)) {
-            const dateKey = new Date(d).toISOString().split('T')[0];
+            const dateKey = toDateKey(d);
             const dayDues = dues.get(dateKey);
             if (dayDues) {
                  dayDues.forEach(due => {
@@ -521,7 +530,7 @@ export const PlannedExpenses: React.FC = () => {
         };
     }, [data, currentDate, searchTerm, calendarDate]);
 
-    if (!data) return <div className="text-white text-center">Cargando...</div>;
+    if (!data) return <div className="text-center">Cargando...</div>;
 
     const expenseConcepts = data.concepts.filter(c => data.costTypes.some(ct => ct.id === c.costTypeId && (ct.name === 'Fijo' || ct.name === 'Variable')));
     
@@ -530,14 +539,14 @@ export const PlannedExpenses: React.FC = () => {
         today.setHours(0,0,0,0);
         date.setHours(0,0,0,0);
 
-        const dateKey = date.toISOString().split('T')[0];
+        const dateKey = toDateKey(date);
         const priority = allDueDates.get(dateKey);
         
-        const isSelected = selectedDate ? date.getTime() === new Date(selectedDate).setHours(0,0,0,0).valueOf() : false;
+        const isSelected = selectedDate ? date.getTime() === selectedDate.getTime() : false;
         const isToday = date.getTime() === today.getTime();
 
-        let cellClass = "relative flex flex-col items-center justify-center h-20 w-full rounded-lg cursor-pointer transition-colors hover:bg-white/10";
-        if (isSelected) cellClass += " bg-primary-700/80";
+        let cellClass = "relative flex flex-col items-center justify-center h-20 w-full rounded-lg cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-white/10";
+        if (isSelected) cellClass += " bg-primary-600/80 dark:bg-primary-700/80";
         else if (isToday) cellClass += " ring-2 ring-primary-500";
         
         let dotColorClass = '';
@@ -558,9 +567,9 @@ export const PlannedExpenses: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <h1 className="text-3xl font-bold">Gastos Planificados</h1>
                 <div className="flex items-center gap-2">
-                    <div className="p-1 rounded-lg bg-black/20 flex items-center">
-                        <button onClick={() => setView('list')} className={`p-1.5 rounded-md ${view === 'list' ? 'bg-primary-600' : ''}`}><ListBulletIcon className="w-5 h-5"/></button>
-                        <button onClick={() => setView('calendar')} className={`p-1.5 rounded-md ${view === 'calendar' ? 'bg-primary-600' : ''}`}><CalendarIcon className="w-5 h-5"/></button>
+                    <div className="p-1 rounded-lg bg-gray-200 dark:bg-black/20 flex items-center">
+                        <button onClick={() => setView('list')} className={`p-1.5 rounded-md ${view === 'list' ? 'bg-primary-600 text-white' : ''}`}><ListBulletIcon className="w-5 h-5"/></button>
+                        <button onClick={() => setView('calendar')} className={`p-1.5 rounded-md ${view === 'calendar' ? 'bg-primary-600 text-white' : ''}`}><CalendarIcon className="w-5 h-5"/></button>
                     </div>
                     <button onClick={() => handleOpenModal()} className="flex-shrink-0 flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">
                         <PlusIcon className="w-5 h-5" /> Añadir Gasto
@@ -571,15 +580,15 @@ export const PlannedExpenses: React.FC = () => {
             {view === 'list' ? (
                 <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <SummaryCard title="Ingresos del Mes" amount={summaryData.incomeThisMonth || 0} colorClass="bg-blue-900/30" />
-                    <SummaryCard title="Saldo Disponible" amount={summaryData.availableBalance || 0} colorClass="bg-indigo-900/30">
+                    <SummaryCard title="Ingresos del Mes" amount={summaryData.incomeThisMonth || 0} colorClass="bg-blue-50 dark:bg-blue-900/30" />
+                    <SummaryCard title="Saldo Disponible" amount={summaryData.availableBalance || 0} colorClass="bg-indigo-50 dark:bg-indigo-900/30">
                         <div className="flex justify-between items-end mt-2">
-                             <p className="text-xs text-indigo-300">Comprometido <br/> {formatCurrency(summaryData.totalPlannedForMonth || 0)}</p>
+                             <p className="text-xs text-indigo-600 dark:text-indigo-300">Comprometido <br/> {formatCurrency(summaryData.totalPlannedForMonth || 0)}</p>
                             <BalanceProgressCircle percentage={summaryData.budgetUsage || 0} />
                         </div>
                     </SummaryCard>
-                    <SummaryCard title="Gastos Totales (Mes)" amount={summaryData.totalPlannedForMonth || 0} colorClass="bg-red-900/30" />
-                    <SummaryCard title="Gastos Pagados (Mes)" amount={summaryData.paidThisMonth || 0} colorClass="bg-green-900/30" />
+                    <SummaryCard title="Gastos Totales (Mes)" amount={summaryData.totalPlannedForMonth || 0} colorClass="bg-red-50 dark:bg-red-900/30" />
+                    <SummaryCard title="Gastos Pagados (Mes)" amount={summaryData.paidThisMonth || 0} colorClass="bg-green-50 dark:bg-green-900/30" />
                 </div>
                 <GlassCard className="p-6">
                     <div className="flex justify-between items-center mb-4">
@@ -588,22 +597,22 @@ export const PlannedExpenses: React.FC = () => {
                     </div>
                      <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead><tr className="border-b border-white/20"><th className="p-2">Concepto</th><th className="p-2">Monto/Periodo</th><th className="p-2">Próximo Pago</th><th className="p-2">Estado</th><th className="p-2 text-right">Acciones</th></tr></thead>
+                            <thead><tr className="border-b border-gray-200 dark:border-white/20"><th className="p-2">Concepto</th><th className="p-2">Monto/Periodo</th><th className="p-2">Próximo Pago</th><th className="p-2">Estado</th><th className="p-2 text-right">Acciones</th></tr></thead>
                             <tbody>
                                 {filteredExpenses.map(exp => (
-                                    <tr key={exp.id} className="border-b border-white/10 hover:bg-white/10">
+                                    <tr key={exp.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-gray-100/50 dark:hover:bg-white/10">
                                         <td className="p-2 flex items-center gap-2"><IconDisplay icon={exp.icon} iconColor={exp.iconColor} /><span className="font-medium">{exp.conceptName}</span></td>
                                         <td className="p-2">{formatCurrency(exp.amountPerPeriod)}</td>
                                         <td className="p-2">{exp.nextPeriodToPay ? `${exp.nextPeriodToPay.period} (Día ${exp.dueDay})` : 'Completado'}</td>
                                         <td className="p-2"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${exp.status.color}`}>{exp.status.text}</span></td>
                                         <td className="p-2 text-right">
                                             {(exp.status.text === 'Vencido' || exp.status.text === 'Próximo a Vencer') && (
-                                                <button onClick={() => handleOpenModal(exp, 'payments')} className="text-green-400 hover:text-green-300 p-1" title="Registrar Pago">
+                                                <button onClick={() => handleOpenModal(exp, 'payments')} className="text-green-500 dark:text-green-400 hover:text-green-600 dark:hover:text-green-300 p-1" title="Registrar Pago">
                                                     <CurrencyDollarIcon className="w-5 h-5" />
                                                 </button>
                                             )}
-                                            <button onClick={() => handleOpenModal(exp)} className="text-primary-400 p-1"><EditIcon className="w-5 h-5"/></button>
-                                            <button onClick={() => handleDelete(exp.id)} className="text-red-400 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
+                                            <button onClick={() => handleOpenModal(exp)} className="text-primary-500 dark:text-primary-400 p-1"><EditIcon className="w-5 h-5"/></button>
+                                            <button onClick={() => handleDelete(exp.id)} className="text-red-500 dark:text-red-400 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
                                         </td>
                                     </tr>
                                 ))}
@@ -630,16 +639,16 @@ export const PlannedExpenses: React.FC = () => {
                                 const concept = data.concepts.find(c => c.id === due.conceptId);
                                 const uniqueKey = `${due.id}-${date.toISOString()}`;
                                 const isExpanded = expandedDueKey === uniqueKey;
-                                const paymentsForPeriod = due.payments.filter(p => p.period === due.duePeriod);
+                                const paymentsForPeriod = (due.payments || []).filter(p => p.period === due.duePeriod);
                                 return (
-                                <div key={uniqueKey} className="bg-black/20 rounded-lg">
+                                <div key={uniqueKey} className="bg-gray-100 dark:bg-black/20 rounded-lg">
                                     <div className="p-2 flex flex-col">
                                         <div 
                                             className="flex justify-between items-center text-sm cursor-pointer" 
                                             onClick={() => setExpandedDueKey(isExpanded ? null : uniqueKey)}
                                         >
                                             <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-primary-300">{date.getDate()}</span>
+                                                <span className="font-semibold text-primary-600 dark:text-primary-300">{date.getDate()}</span>
                                                 <span className="font-semibold">{concept?.name}</span>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -648,11 +657,11 @@ export const PlannedExpenses: React.FC = () => {
                                             </div>
                                         </div>
                                          <div className="flex justify-end gap-2 text-xs mt-2">
-                                            <button onClick={() => handleOpenModal(due, 'payments')} className="bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded-md">Pagar / Editar</button>
+                                            <button onClick={() => handleOpenModal(due, 'payments')} className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded-md">Pagar / Editar</button>
                                         </div>
                                     </div>
                                     {isExpanded && (
-                                        <div className="mt-2 p-2 border-t border-white/20 text-xs">
+                                        <div className="mt-2 p-2 border-t border-gray-200 dark:border-white/20 text-xs">
                                             <p className="font-semibold mb-1">Pagos para periodo {due.duePeriod}:</p>
                                             {paymentsForPeriod.length > 0 ? (
                                                 <ul className="space-y-1 list-disc list-inside pl-2">
@@ -662,11 +671,11 @@ export const PlannedExpenses: React.FC = () => {
                                                         </li>
                                                     ))}
                                                 </ul>
-                                            ) : <p className="text-gray-400 italic">No hay pagos registrados para este periodo.</p>}
+                                            ) : <p className="text-gray-500 dark:text-gray-400 italic">No hay pagos registrados para este periodo.</p>}
                                         </div>
                                     )}
                                 </div>
-                            )}) : <p className="text-gray-400 text-center text-sm pt-4">No hay vencimientos para este mes.</p>}
+                            )}) : <p className="text-gray-500 dark:text-gray-400 text-center text-sm pt-4">No hay vencimientos para este mes.</p>}
                         </div>
                     </GlassCard>
                 </div>

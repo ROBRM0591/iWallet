@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { DailyExpense, Concept, MovementTypeName } from '../types';
+import { Income } from '../types';
 import { generateSequentialId, toDateKey } from './utils';
 import { DeleteIcon, WarningIcon, CheckCircleIcon } from './Icons';
 import { CalendarGrid } from './CalendarGrid';
@@ -98,13 +98,13 @@ const SuccessToast: React.FC<{
     );
 };
 
-export const DailyExpenses: React.FC = () => {
+export const Incomes: React.FC = () => {
     const { appData: data, setData } = useAuth();
     const today = new Date();
     today.setHours(0,0,0,0);
     const todayISO = toDateKey(today);
     
-    const [formState, setFormState] = useState({ conceptId: '', amount: 0, date: todayISO });
+    const [formState, setFormState] = useState({ description: '', amount: 0, date: todayISO });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
@@ -117,32 +117,26 @@ export const DailyExpenses: React.FC = () => {
         }
     }, [selectedDate]);
 
-    if (!data) return <div className="text-white">Cargando...</div>;
+    if (!data) return <div className="text-center">Cargando...</div>;
 
-    const movGastoId = useMemo(() => data.movementTypes.find(m => m.name === MovementTypeName.GASTO)?.id, [data.movementTypes]);
-    const variableCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Variable')?.id, [data.costTypes]);
-    const expenseConcepts = useMemo(() => {
-        return data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === variableCostTypeId);
-    }, [data.concepts, movGastoId, variableCostTypeId]);
-
-    const { expensesByDate } = useMemo(() => {
-        const expenseMap = new Map<string, DailyExpense[]>();
+    const { incomesByDate } = useMemo(() => {
+        const incomeMap = new Map<string, Income[]>();
         
-        data.dailyExpenses.forEach(expense => {
-            const expenseDate = new Date(expense.date);
-            const dateKey = toDateKey(expenseDate);
+        data.incomes.forEach(income => {
+            const incomeDate = new Date(income.date);
+            const dateKey = toDateKey(incomeDate);
 
-            if (!expenseMap.has(dateKey)) expenseMap.set(dateKey, []);
-            expenseMap.get(dateKey)!.push(expense);
+            if (!incomeMap.has(dateKey)) incomeMap.set(dateKey, []);
+            incomeMap.get(dateKey)!.push(income);
         });
         
-        return { expensesByDate: expenseMap };
-    }, [data.dailyExpenses]);
+        return { incomesByDate: incomeMap };
+    }, [data.incomes]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const newErrors: Record<string, string> = {};
-        if (!formState.conceptId) newErrors.conceptId = 'Debe seleccionar un concepto.';
+        if (!formState.description.trim()) newErrors.description = 'La descripción es requerida.';
         if (formState.amount <= 0) newErrors.amount = 'El monto debe ser mayor a 0.';
         if (!formState.date) newErrors.date = 'La fecha es requerida.';
         if (Object.keys(newErrors).length > 0) {
@@ -150,16 +144,16 @@ export const DailyExpenses: React.FC = () => {
             return;
         }
 
-        const newExpense: DailyExpense = {
-            id: generateSequentialId('GD', data.dailyExpenses),
-            conceptId: formState.conceptId,
+        const newIncome: Income = {
+            id: generateSequentialId('IN', data.incomes),
+            description: formState.description,
             amount: formState.amount,
             date: new Date(`${formState.date}T00:00:00`).toISOString()
         };
-        setData({ ...data, dailyExpenses: [...data.dailyExpenses, newExpense] });
-        setFormState({ conceptId: '', amount: 0, date: formState.date });
+        setData({ ...data, incomes: [...data.incomes, newIncome] });
+        setFormState({ description: '', amount: 0, date: formState.date });
         setErrors({});
-        setSuccessInfo({ title: 'Éxito', message: 'Gasto diario registrado correctamente.' });
+        setSuccessInfo({ title: 'Éxito', message: 'Ingreso registrado correctamente.' });
     };
 
     const handleDelete = (id: string) => {
@@ -168,7 +162,7 @@ export const DailyExpenses: React.FC = () => {
 
     const confirmDelete = () => {
         if (!deleteId) return;
-        setData({ ...data, dailyExpenses: data.dailyExpenses.filter(e => e.id !== deleteId) });
+        setData({ ...data, incomes: data.incomes.filter(e => e.id !== deleteId) });
         setDeleteId(null);
     };
 
@@ -178,7 +172,7 @@ export const DailyExpenses: React.FC = () => {
         date.setHours(0,0,0,0);
 
         const dateKey = toDateKey(date);
-        const hasExpenses = expensesByDate.has(dateKey);
+        const hasIncomes = incomesByDate.has(dateKey);
         
         const isSelected = selectedDate ? date.getTime() === selectedDate.getTime() : false;
         const isToday = date.getTime() === today.getTime();
@@ -190,20 +184,20 @@ export const DailyExpenses: React.FC = () => {
         return (
             <div className={cellClass}>
                 <span>{date.getDate()}</span>
-                {hasExpenses && <div className="absolute bottom-2 w-2 h-2 rounded-full bg-red-500"></div>}
+                {hasIncomes && <div className="absolute bottom-2 w-2 h-2 rounded-full bg-green-500"></div>}
             </div>
         );
-    }, [selectedDate, expensesByDate]);
+    }, [selectedDate, incomesByDate]);
 
-    const selectedDayExpenses = useMemo(() => {
+    const selectedDayIncomes = useMemo(() => {
         if (!selectedDate) return [];
         const dateKey = toDateKey(selectedDate);
-        return expensesByDate.get(dateKey) || [];
-    }, [selectedDate, expensesByDate]);
+        return incomesByDate.get(dateKey) || [];
+    }, [selectedDate, incomesByDate]);
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold">Gastos Diarios</h1>
+            <h1 className="text-3xl font-bold">Ingresos</h1>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
@@ -219,31 +213,28 @@ export const DailyExpenses: React.FC = () => {
                 <GlassCard className="p-4 flex flex-col">
                     <h3 className="text-lg font-bold mb-4">{selectedDate ? selectedDate.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long'}) : 'Selecciona un día'}</h3>
                     <div className="flex-grow overflow-y-auto pr-2 space-y-2 mb-4">
-                        {selectedDayExpenses.length > 0 ? selectedDayExpenses.map(exp => (
-                            <div key={exp.id} className="p-2 bg-gray-100 dark:bg-black/20 rounded-lg flex justify-between items-center">
-                                <span className="text-sm font-medium">{expenseConcepts.find(c => c.id === exp.conceptId)?.name}</span>
+                        {selectedDayIncomes.length > 0 ? selectedDayIncomes.map(inc => (
+                            <div key={inc.id} className="p-2 bg-gray-100 dark:bg-black/20 rounded-lg flex justify-between items-center">
+                                <span className="text-sm font-medium">{inc.description}</span>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-red-500 dark:text-red-400">{formatCurrency(exp.amount)}</span>
-                                    <button onClick={() => handleDelete(exp.id)} className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400"><DeleteIcon className="w-4 h-4" /></button>
+                                    <span className="text-sm font-bold text-green-500 dark:text-green-400">{formatCurrency(inc.amount)}</span>
+                                    <button onClick={() => handleDelete(inc.id)} className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400"><DeleteIcon className="w-4 h-4" /></button>
                                 </div>
                             </div>
-                        )) : <p className="text-gray-500 dark:text-gray-400 text-center text-sm pt-4">No hay gastos para este día.</p>}
+                        )) : <p className="text-gray-500 dark:text-gray-400 text-center text-sm pt-4">No hay ingresos para este día.</p>}
                     </div>
                      <form onSubmit={handleSubmit} className="space-y-3 border-t border-gray-200 dark:border-white/20 pt-4">
-                         <h4 className="font-bold text-md">Añadir Gasto para este día</h4>
+                         <h4 className="font-bold text-md">Añadir Ingreso para este día</h4>
                         <div>
-                            <select value={formState.conceptId} onChange={e => setFormState(s => ({...s, conceptId: e.target.value}))} className="block w-full rounded-md shadow-sm">
-                                <option value="">Seleccione un concepto</option>
-                                {expenseConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                            {errors.conceptId && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.conceptId}</p>}
+                            <input type="text" placeholder="Descripción (ej. Nómina)" value={formState.description} onChange={e => setFormState(s => ({...s, description: e.target.value}))} className="block w-full rounded-md shadow-sm" />
+                            {errors.description && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.description}</p>}
                         </div>
                         <div>
                             <input type="number" step="0.01" placeholder="Monto" value={formState.amount || ''} onChange={e => setFormState(s => ({...s, amount: parseFloat(e.target.value)}))} className="block w-full rounded-md shadow-sm" />
                             {errors.amount && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.amount}</p>}
                         </div>
                         <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">
-                            Registrar Gasto
+                            Registrar Ingreso
                         </button>
                     </form>
                 </GlassCard>
@@ -254,7 +245,7 @@ export const DailyExpenses: React.FC = () => {
                 onClose={() => setDeleteId(null)}
                 onConfirm={confirmDelete}
                 title="Confirmar Eliminación"
-                message="¿Estás seguro de que quieres eliminar este gasto diario? Esta acción no se puede deshacer."
+                message="¿Estás seguro de que quieres eliminar este ingreso? Esta acción no se puede deshacer."
             />
             <SuccessToast 
                 isOpen={!!successInfo}

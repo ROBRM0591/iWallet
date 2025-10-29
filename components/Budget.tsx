@@ -18,7 +18,7 @@ const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg text-white ${className}`}>
+    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
@@ -45,15 +45,15 @@ const SuccessToast: React.FC<{
             }`}
         >
             {isOpen && (
-                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-white">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-300" />
+                 <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-gray-900 dark:text-white">
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
                     </div>
                     <div className="flex-grow">
                         <p className="font-bold">{title}</p>
-                        <p className="text-sm text-gray-300">{message}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
                     </div>
-                     <button onClick={onClose} className="text-gray-400 hover:text-gray-200">&times;</button>
+                     <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">&times;</button>
                 </div>
             )}
         </div>
@@ -62,8 +62,8 @@ const SuccessToast: React.FC<{
 
 const SummaryCard: React.FC<{ title: string; amount: number; color: string; }> = ({ title, amount, color }) => (
     <GlassCard className={`p-6 border-l-4 ${color}`}>
-        <h3 className="text-sm font-medium text-gray-300">{title}</h3>
-        <p className="mt-1 text-3xl font-semibold text-white">{formatCurrency(amount)}</p>
+        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-300">{title}</h3>
+        <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{formatCurrency(amount)}</p>
     </GlassCard>
 );
 
@@ -86,10 +86,10 @@ const BudgetCategoryItem: React.FC<{
     };
 
     return (
-        <div className="bg-black/20 p-4 rounded-xl group">
+        <div className="bg-gray-100 dark:bg-black/20 p-4 rounded-xl group">
             <div className="flex justify-between items-center mb-2">
                 <h4 
-                    className="font-bold text-lg cursor-pointer hover:text-primary-400 transition"
+                    className="font-bold text-lg cursor-pointer hover:text-primary-500 dark:hover:text-primary-400 transition"
                     onClick={onClick}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
                     role="button"
@@ -99,7 +99,7 @@ const BudgetCategoryItem: React.FC<{
                 </h4>
                 <div className="w-1/3 flex items-center gap-1">
                      <div className="relative flex-grow">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">$</span>
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">$</span>
                         <input
                             type="number"
                             value={budgeted === 0 ? '' : budgeted}
@@ -110,7 +110,7 @@ const BudgetCategoryItem: React.FC<{
                     </div>
                     <button 
                         onClick={onDelete} 
-                        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                        className="text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                         title="Eliminar presupuesto"
                     >
                         <DeleteIcon className="w-5 h-5" />
@@ -118,7 +118,7 @@ const BudgetCategoryItem: React.FC<{
                 </div>
             </div>
             <div 
-                className="w-full bg-black/30 rounded-full h-4 mb-2 cursor-pointer"
+                className="w-full bg-gray-200 dark:bg-black/30 rounded-full h-4 mb-2 cursor-pointer"
                 onClick={onClick}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
                 role="button"
@@ -127,10 +127,10 @@ const BudgetCategoryItem: React.FC<{
             >
                 <div className={`${getProgressBarColor()} h-4 rounded-full transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
             </div>
-            <div className="flex justify-between text-sm text-gray-300">
+            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
                 <span>Gastado: {formatCurrency(spent)}</span>
                 {budgeted > 0 && (
-                    <span className={remaining < 0 ? 'text-red-400 font-semibold' : ''}>
+                    <span className={remaining < 0 ? 'text-red-500 dark:text-red-400 font-semibold' : ''}>
                         {remaining >= 0 ? `Restante: ${formatCurrency(remaining)}` : `Excedido: ${formatCurrency(Math.abs(remaining))}`}
                     </span>
                 )}
@@ -145,7 +145,7 @@ export const Budget: React.FC = () => {
     const navigate = useNavigate();
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
     const [addingBudgetId, setAddingBudgetId] = useState<string | null>(null);
-    const [newBudgetAmount, setNewBudgetAmount] = useState<number | string>('');
+    const [newBudgetAmount, setNewBudgetAmount] = useState<number>(0);
     const [selectedDate, setSelectedDate] = useState({
         month: new Date().getMonth(),
         year: new Date().getFullYear(),
@@ -181,7 +181,7 @@ export const Budget: React.FC = () => {
         });
 
         data.plannedExpenses.forEach(expense => {
-            expense.payments.forEach(payment => {
+            (expense.payments || []).forEach(payment => {
                 const paymentDate = new Date(payment.date);
                  if (paymentDate >= startOfMonth && paymentDate <= endOfMonth) {
                     const concept = data.concepts.find(c => c.id === expense.conceptId);
@@ -194,12 +194,16 @@ export const Budget: React.FC = () => {
     }, [data, selectedDate]);
     
     const summary = useMemo(() => {
-        // FIX: Explicitly type accumulators and values in reduce functions to prevent type inference errors.
-        const totalBudgeted = data.monthlyBudgets.reduce((sum: number, b) => sum + (Number(b.amount) || 0), 0);
-        const totalSpent = Array.from(periodSpending.values()).reduce((sum: number, amount: number) => sum + (amount || 0), 0);
+        // FIX: totalBudgeted now correctly sums budgets only for the expense categories relevant to this view.
+        const totalBudgeted = data.monthlyBudgets
+          .filter(b => expenseCategories.some(ec => ec.id === b.categoryId))
+          .reduce((sum, b) => sum + b.amount, 0);
+
+        // FIX: Explicitly type accumulator and current value in reduce to prevent potential type errors.
+        const totalSpent = Array.from(periodSpending.values()).reduce((sum: number, amount: number) => sum + amount, 0);
         const totalRemaining = totalBudgeted - totalSpent;
         return { totalBudgeted, totalSpent, totalRemaining };
-    }, [data.monthlyBudgets, periodSpending]);
+    }, [data.monthlyBudgets, periodSpending, expenseCategories]);
 
     const handleBudgetChange = (categoryId: string, amount: number) => {
         const existingBudget = data.monthlyBudgets.find(b => b.categoryId === categoryId);
@@ -231,13 +235,12 @@ export const Budget: React.FC = () => {
     
     const handleAddBudgetClick = (categoryId: string) => {
         setAddingBudgetId(categoryId);
-        setNewBudgetAmount('');
+        setNewBudgetAmount(0);
     };
 
     const handleSaveNewBudget = (categoryId: string) => {
-        const amount = Number(newBudgetAmount) || 0;
-        if (amount > 0) {
-            handleBudgetChange(categoryId, amount);
+        if (newBudgetAmount > 0) {
+            handleBudgetChange(categoryId, newBudgetAmount);
         }
         setAddingBudgetId(null);
     };
@@ -269,19 +272,19 @@ export const Budget: React.FC = () => {
     return (
         <div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h1 className="text-3xl font-bold text-white">Presupuesto Mensual</h1>
-                <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded-lg">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Presupuesto Mensual</h1>
+                <div className="flex items-center gap-2 bg-gray-100 dark:bg-black/20 p-1.5 rounded-lg">
                     <select
                         value={selectedDate.month}
                         onChange={(e) => setSelectedDate(prev => ({ ...prev, month: Number(e.target.value) }))}
-                        className="border border-white/20 rounded-md py-1 px-2 text-sm font-semibold"
+                        className="border border-gray-300 dark:border-white/20 rounded-md py-1 px-2 text-sm font-semibold"
                     >
                         {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
                     <select
                         value={selectedDate.year}
                         onChange={(e) => setSelectedDate(prev => ({ ...prev, year: Number(e.target.value) }))}
-                        className="border border-white/20 rounded-md py-1 px-2 text-sm font-semibold"
+                        className="border border-gray-300 dark:border-white/20 rounded-md py-1 px-2 text-sm font-semibold"
                     >
                         {years.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
@@ -295,7 +298,7 @@ export const Budget: React.FC = () => {
 
             <GlassCard className="p-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-white">Presupuesto por Categoría</h2>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Presupuesto por Categoría</h2>
                     <CsvTools
                         entityName="Presupuestos"
                         items={data.monthlyBudgets}
@@ -324,15 +327,15 @@ export const Budget: React.FC = () => {
                                 );
                             } else if (addingBudgetId === category.id) {
                                 return (
-                                    <div key={category.id} className="bg-black/20 p-4 rounded-xl transition-all duration-300">
+                                    <div key={category.id} className="bg-gray-100 dark:bg-black/20 p-4 rounded-xl transition-all duration-300">
                                         <h4 className="font-bold text-lg mb-2">{category.name}</h4>
                                         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                                             <div className="relative flex-grow">
-                                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">$</span>
+                                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 dark:text-gray-400">$</span>
                                                 <input
                                                     type="number"
-                                                    value={newBudgetAmount}
-                                                    onChange={(e) => setNewBudgetAmount(e.target.value)}
+                                                    value={newBudgetAmount || ''}
+                                                    onChange={(e) => setNewBudgetAmount(Number(e.target.value) || 0)}
                                                     placeholder="Monto del presupuesto"
                                                     className="w-full pl-7 pr-2 py-2 rounded-md shadow-sm"
                                                     autoFocus
@@ -342,7 +345,7 @@ export const Budget: React.FC = () => {
                                                 <button onClick={() => handleSaveNewBudget(category.id)} className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">
                                                     Guardar
                                                 </button>
-                                                <button onClick={handleCancelAddBudget} className="bg-white/10 hover:bg-white/20 text-gray-200 font-semibold px-4 py-2 rounded-lg text-sm transition">
+                                                <button onClick={handleCancelAddBudget} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg text-sm transition">
                                                     Cancelar
                                                 </button>
                                             </div>
@@ -351,9 +354,9 @@ export const Budget: React.FC = () => {
                                 );
                             } else {
                                 return (
-                                <div key={category.id} className="bg-black/20 p-4 rounded-xl flex justify-between items-center">
+                                <div key={category.id} className="bg-gray-100 dark:bg-black/20 p-4 rounded-xl flex justify-between items-center">
                                     <h4 className="font-bold text-lg">{category.name}</h4>
-                                    <button onClick={() => handleAddBudgetClick(category.id)} className="bg-primary-900/50 hover:bg-primary-900 text-primary-200 font-semibold px-4 py-2 rounded-lg text-sm transition">
+                                    <button onClick={() => handleAddBudgetClick(category.id)} className="bg-primary-100 dark:bg-primary-900/50 hover:bg-primary-200 dark:hover:bg-primary-900 text-primary-700 dark:text-primary-200 font-semibold px-4 py-2 rounded-lg text-sm transition">
                                         Añadir Presupuesto
                                     </button>
                                 </div>
@@ -361,10 +364,10 @@ export const Budget: React.FC = () => {
                             }
                         })
                     ) : (
-                        <div className="text-center py-8 text-gray-400">
+                        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                             <p>No hay categorías de gastos para presupuestar.</p>
                             <p className="mt-2 text-sm">
-                                Por favor, ve a <a href="#/catalogs" className="font-medium text-primary-400 hover:underline">Catálogos</a> para añadir categorías de gastos.
+                                Por favor, ve a <a href="#/catalogs" className="font-medium text-primary-600 dark:text-primary-400 hover:underline">Catálogos</a> para añadir categorías de gastos.
                             </p>
                         </div>
                     )}
