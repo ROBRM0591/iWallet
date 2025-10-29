@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { AppData, UserProfile } from '../types';
+import { AppData } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { BLANK_DATA, COLOR_PALETTES } from '../constants';
-import { WarningIcon, CheckCircleIcon, ComputerDesktopIcon, SunIcon, MoonIcon, DownloadIcon, CloseIcon, EditIcon } from './Icons';
+import { WarningIcon, CheckCircleIcon, ComputerDesktopIcon, SunIcon, MoonIcon, DownloadIcon, CloseIcon } from './Icons';
 import { IconDisplay } from './IconDisplay';
 import { IconPicker } from './IconPicker';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -20,31 +20,6 @@ interface OutletContextType {
   handleInstallClick: () => void;
   isInstalled: boolean;
 }
-
-const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        if (isOpen) document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-slate-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
-                    <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                        <CloseIcon className="w-6 h-6" />
-                    </button>
-                </div>
-                <div className="p-6 max-h-[70vh] overflow-y-auto">{children}</div>
-            </div>
-        </div>
-    );
-};
 
 const ConfirmationModal: React.FC<{
     isOpen: boolean;
@@ -131,28 +106,6 @@ const SuccessToast: React.FC<{
     );
 };
 
-const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void; label: string; description?: string; disabled?: boolean; }> = ({ enabled, onChange, label, description, disabled = false }) => (
-    <div className={`flex items-center justify-between p-4 bg-gray-100 dark:bg-white/5 rounded-lg transition-all ${disabled ? 'opacity-50' : 'hover:bg-gray-200 dark:hover:bg-white/10'}`}>
-      <div className="flex-1">
-        <p className="font-semibold text-gray-900 dark:text-white">{label}</p>
-        {description && <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{description}</p>}
-      </div>
-      <button
-        onClick={() => !disabled && onChange(!enabled)}
-        className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-          enabled ? 'bg-primary-600' : 'bg-gray-400 dark:bg-gray-600'
-        } ${disabled ? 'cursor-not-allowed' : ''}`}
-        disabled={disabled}
-      >
-        <span
-          className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-            enabled ? 'translate-x-7' : 'translate-x-1'
-          }`}
-        />
-      </button>
-    </div>
-);
-
 const SettingCard: React.FC<{ icon: string; title: string; children: React.ReactNode; className?: string; }> = ({ icon, title, children, className = '' }) => (
     <div className={`bg-white dark:bg-black/20 backdrop-blur-xl rounded-2xl border border-gray-200/80 dark:border-white/20 p-6 text-gray-900 dark:text-white ${className}`}>
       <div className="flex items-center gap-3 mb-4">
@@ -165,64 +118,8 @@ const SettingCard: React.FC<{ icon: string; title: string; children: React.React
     </div>
 );
 
-const EditProfileForm: React.FC<{ userProfile: UserProfile | null, onSave: (data: Partial<UserProfile>) => void, onCancel: () => void }> = ({ userProfile, onSave, onCancel }) => {
-    const [formData, setFormData] = useState({
-        username: userProfile?.username || '',
-        email: userProfile?.email || '',
-        avatar: userProfile?.avatar || '',
-    });
-    const avatarInputRef = useRef<HTMLInputElement>(null);
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    };
-
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                setFormData(prev => ({ ...prev, avatar: reader.result as string }));
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-    
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave(formData);
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex flex-col items-center gap-4">
-                <img 
-                    src={formData.avatar || `https://i.pravatar.cc/96?u=${formData.email}`} 
-                    alt="Avatar" 
-                    className="w-24 h-24 rounded-full object-cover cursor-pointer"
-                    onClick={() => avatarInputRef.current?.click()}
-                />
-                <input type="file" ref={avatarInputRef} onChange={handleAvatarChange} className="hidden" accept="image/*"/>
-                <button type="button" onClick={() => avatarInputRef.current?.click()} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">Cambiar foto</button>
-            </div>
-            <div>
-                <label className="block text-sm font-medium">Nombre de Usuario</label>
-                <input type="text" name="username" value={formData.username} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm"/>
-            </div>
-            <div>
-                <label className="block text-sm font-medium">Correo Electrónico</label>
-                <input type="email" name="email" value={formData.email} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm"/>
-            </div>
-            <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Cambios</button>
-            </div>
-        </form>
-    );
-};
-
 export const Settings: React.FC = () => {
-    const { appData: data, setData, userProfile, updateUserProfile } = useAuth();
+    const { appData: data, setData } = useAuth();
     const { appIcon, setAppIcon, theme, setTheme, setPalette, installPrompt, handleInstallClick, isInstalled } = useOutletContext<OutletContextType>();
     
     const [activeSection, setActiveSection] = useState('appearance');
@@ -236,7 +133,6 @@ export const Settings: React.FC = () => {
     const iconPickerContainerRef = useRef<HTMLDivElement>(null);
     const [currentPalette, setCurrentPalette] = useLocalStorage('iwallet-palette', COLOR_PALETTES[2]);
     const [defaultIconColor, setDefaultIconColor] = useState('text-gray-800 dark:text-white');
-    const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
     
     useEffect(() => {
         const isDark = document.documentElement.classList.contains('dark') || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -440,42 +336,6 @@ export const Settings: React.FC = () => {
             case 'data':
                 return (
                     <div className="space-y-6">
-                        <SettingCard icon="👤" title="Perfil de Usuario">
-                            <div className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200/80 dark:border-white/20">
-                                <div className="flex items-center gap-4">
-                                    <img 
-                                        src={userProfile?.avatar || `https://i.pravatar.cc/64?u=${userProfile?.email}`} 
-                                        alt="Avatar" 
-                                        className="w-16 h-16 rounded-full object-cover"
-                                    />
-                                    <div>
-                                        <p className="font-semibold text-lg text-gray-900 dark:text-white">{userProfile?.username}</p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">{userProfile?.email}</p>
-                                    </div>
-                                </div>
-                                <button 
-                                    onClick={() => setIsEditProfileModalOpen(true)}
-                                    className="w-full mt-4 bg-primary-600/10 hover:bg-primary-600/20 text-primary-700 dark:text-primary-300 dark:hover:bg-primary-500/30 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
-                                >
-                                    <EditIcon className="w-4 h-4" />
-                                    Editar Perfil
-                                </button>
-                            </div>
-                        </SettingCard>
-                        <SettingCard icon="☁️" title="Sincronización en la Nube (DEMO)">
-                             <div className="p-4 bg-gray-100 dark:bg-white/5 rounded-lg border border-gray-200/80 dark:border-white/20">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <img src={userProfile?.avatar || `https://i.pravatar.cc/48?u=${userProfile?.email}`} alt="Avatar" className="w-12 h-12 rounded-full object-cover"/>
-                                    <div>
-                                        <p className="font-semibold text-gray-900 dark:text-white">{userProfile?.username}</p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">{userProfile?.email}</p>
-                                    </div>
-                                </div>
-                                <button disabled className="w-full bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 py-2 rounded-lg font-semibold cursor-not-allowed">
-                                    🔒 Activar Sincronización (Próximamente)
-                                </button>
-                            </div>
-                        </SettingCard>
                         <SettingCard icon="📤" title="Exportar e Importar">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <button onClick={() => fileInputRef.current?.click()} className="bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2">
@@ -562,17 +422,6 @@ export const Settings: React.FC = () => {
                 title="Confirmar Importación"
                 message="¿Estás seguro? Esta acción sobrescribirá TODA tu información actual de forma irreversible."
             />
-             <Modal isOpen={isEditProfileModalOpen} onClose={() => setIsEditProfileModalOpen(false)} title="Editar Perfil">
-                <EditProfileForm 
-                    userProfile={userProfile} 
-                    onSave={(updated) => {
-                        updateUserProfile(updated);
-                        setIsEditProfileModalOpen(false);
-                        setSuccessInfo({ title: 'Perfil Actualizado', message: 'Tus datos de perfil han sido guardados.' });
-                    }}
-                    onCancel={() => setIsEditProfileModalOpen(false)}
-                />
-            </Modal>
             <SuccessToast 
                 isOpen={!!successInfo}
                 onClose={() => setSuccessInfo(null)}

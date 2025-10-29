@@ -116,17 +116,3 @@ export interface AppData {
   monthlyBudgets: MonthlyBudget[];
   notifications: NotificationSettings;
 }
-
-export interface UserProfile {
-  username: string;
-  email: string;
-  pinHash: string;
-  securityAnswer1: string; // Date string
-  securityAnswer2Hash: string; // Hash of 6-digit code
-  avatar?: string;
-}
-
-export interface LocalSession {
-  userProfile: UserProfile | null;
-  appData: AppData | null;
-}

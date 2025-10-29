@@ -8,11 +8,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { CsvTools, CsvHeader } from './CsvTools';
 import { generateSequentialId } from './utils';
 
-const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
+// FIX: Update GlassCard to forward refs. This is necessary to attach a ref to it for scrolling into view.
+const GlassCard = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(({ children, className = '' }, ref) => (
+    <div ref={ref} className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
-);
+));
+GlassCard.displayName = "GlassCard";
 
 const ConfirmationModal: React.FC<{
     isOpen: boolean;
@@ -361,7 +363,7 @@ export const SavingsGoals: React.FC = () => {
                     return (
                         <GlassCard 
                             key={goal.id} 
-                            ref={el => goalRefs.current[goal.id] = el}
+                            ref={el => { if (el) goalRefs.current[goal.id] = el; }}
                             className="p-4 transition-all duration-300"
                         >
                              <div className="flex justify-between items-start">

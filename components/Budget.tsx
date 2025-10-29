@@ -194,13 +194,14 @@ export const Budget: React.FC = () => {
     }, [data, selectedDate]);
     
     const summary = useMemo(() => {
-        // FIX: totalBudgeted now correctly sums budgets only for the expense categories relevant to this view.
         const totalBudgeted = data.monthlyBudgets
           .filter(b => expenseCategories.some(ec => ec.id === b.categoryId))
-          .reduce((sum, b) => sum + b.amount, 0);
+          // FIX: Explicitly type the reduce function arguments to ensure type safety during arithmetic operations.
+          .reduce((sum: number, b: MonthlyBudget) => sum + b.amount, 0);
 
-        // FIX: Explicitly type accumulator and current value in reduce to prevent potential type errors.
-        const totalSpent = Array.from(periodSpending.values()).reduce((sum: number, amount: number) => sum + amount, 0);
+        const totalSpent = Array.from(periodSpending.values())
+          // FIX: Explicitly type the reduce function arguments to ensure type safety.
+          .reduce((sum: number, amount: number) => sum + amount, 0);
         const totalRemaining = totalBudgeted - totalSpent;
         return { totalBudgeted, totalSpent, totalRemaining };
     }, [data.monthlyBudgets, periodSpending, expenseCategories]);

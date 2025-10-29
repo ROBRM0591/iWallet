@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { COLOR_PALETTES } from '../constants';
-import { UserProfile } from '../types';
 import { 
     SunIcon, MoonIcon, PaletteIcon, DashboardIcon, CatalogIcon, WalletIcon, 
     PlannedExpenseIcon, SavingsGoalIcon, ReportsIcon, CalculatorIcon, ManualIcon,
@@ -13,20 +12,17 @@ import { IconDisplay } from './IconDisplay';
 type Theme = 'light' | 'dark' | 'system';
 
 interface HeaderProps {
-    userProfile: UserProfile;
     theme: Theme;
     setTheme: (theme: Theme) => void;
     setPalette: (palette: typeof COLOR_PALETTES[0]) => void;
     refreshData: () => void;
     isRefreshing: boolean;
-    onLogout: () => void;
     appIcon: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({ userProfile, theme, setTheme, setPalette, refreshData, isRefreshing, onLogout, appIcon }) => {
+export const Header: React.FC<HeaderProps> = ({ theme, setTheme, setPalette, refreshData, isRefreshing, appIcon }) => {
     const [paletteOpen, setPaletteOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
-    const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
@@ -43,7 +39,6 @@ export const Header: React.FC<HeaderProps> = ({ userProfile, theme, setTheme, se
             if (e.key === 'Escape') {
                 setPaletteOpen(false);
                 setMoreOpen(false);
-                setUserMenuOpen(false);
             }
         };
 
@@ -52,7 +47,6 @@ export const Header: React.FC<HeaderProps> = ({ userProfile, theme, setTheme, se
             if (!target.closest('header')) {
                 setPaletteOpen(false);
                 setMoreOpen(false);
-                setUserMenuOpen(false);
             }
         };
 
@@ -120,7 +114,7 @@ export const Header: React.FC<HeaderProps> = ({ userProfile, theme, setTheme, se
                              </div>
                         </nav>
 
-                        <div className="hidden lg:block mx-2 border-l border-gray-300 dark:border-white/20 h-8"></div>
+                        <div className="lg:block mx-2 border-l border-gray-300 dark:border-white/20 h-8"></div>
                         
                         <div className="flex items-center space-x-2">
                              <button onClick={refreshData} disabled={isRefreshing} className="p-2 rounded-full text-gray-500 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition disabled:cursor-not-allowed" aria-label="Actualizar datos">
@@ -148,24 +142,6 @@ export const Header: React.FC<HeaderProps> = ({ userProfile, theme, setTheme, se
                             <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className="p-2 rounded-full text-gray-500 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition">
                                 {isDark ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
                             </button>
-                            
-                             <div className="relative">
-                                <button onClick={() => setUserMenuOpen(v => !v)} className="flex items-center gap-2 p-1 rounded-full text-gray-700 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10 transition">
-                                     <img src={userProfile.avatar || `https://i.pravatar.cc/32?u=${userProfile.email}`} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
-                                     <span className="hidden lg:inline font-semibold text-sm">{userProfile.username}</span>
-                                     <ChevronDownIcon className={`w-4 h-4 transition-transform hidden lg:inline ${userMenuOpen ? 'rotate-180' : ''}`} />
-                                </button>
-                                {userMenuOpen && (
-                                     <div className="absolute right-0 top-full mt-2 w-48 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border border-gray-200 dark:border-white/10 rounded-lg shadow-xl p-2 z-50">
-                                        <div className="p-2">
-                                            <p className="font-bold text-sm text-gray-800 dark:text-white">{userProfile.username}</p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">{userProfile.email}</p>
-                                        </div>
-                                        <hr className="my-1 border-gray-200 dark:border-white/20" />
-                                        <button onClick={() => { onLogout(); setUserMenuOpen(false); }} className="w-full text-left px-3 py-2 text-sm rounded-md text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50">Cerrar Sesión</button>
-                                    </div>
-                                )}
-                            </div>
                         </div>
                     </div>
                 </div>

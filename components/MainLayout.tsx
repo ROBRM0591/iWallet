@@ -309,7 +309,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
 };
 
 export const MainLayout: React.FC = () => {
-    const { appData, setData, userProfile, logout } = useAuth();
+    const { appData, setData } = useAuth();
     const [theme, setTheme] = useLocalStorage<Theme>('iwallet-theme', 'system');
     const [palette, setPaletteState] = useLocalStorage('iwallet-palette', COLOR_PALETTES[2]);
     const [appIcon, setAppIcon] = useLocalStorage('iwallet-app-icon', 'wallet');
@@ -358,12 +358,10 @@ export const MainLayout: React.FC = () => {
     const refreshData = useCallback(() => {
         setIsRefreshing(true);
         setTimeout(() => {
-            const item = window.localStorage.getItem('iwallet-session');
+            const item = window.localStorage.getItem('iwallet-data');
             if (item) {
                 const session = JSON.parse(item);
-                if (session.appData) {
-                    setData(session.appData);
-                }
+                setData(session);
             }
             setIsRefreshing(false);
         }, 1000);
@@ -403,90 +401,43 @@ export const MainLayout: React.FC = () => {
         Object.entries(p.shades).forEach(([key, value]) => root.style.setProperty(`--color-primary-${key}`, value));
         root.style.setProperty('--color-primary', p.hex);
     }, [setPaletteState]);
-    
+
     useEffect(() => {
         setPalette(palette);
     }, [palette, setPalette]);
 
-
-    useEffect(() => {
-        if (!appData || !('Notification' in window) || Notification.permission !== 'granted' || !appData.plannedExpenses) return;
-
-        const NOTIFIED_EXPENSES_KEY = 'iwallet-notified-expenses';
-        const getNotifiedExpenses = (): Record<string, string> => JSON.parse(localStorage.getItem(NOTIFIED_EXPENSES_KEY) || '{}');
-        const setNotifiedExpense = (expenseId: string, period: string) => {
-            const notified = getNotifiedExpenses();
-            notified[`${expenseId}-${period}`] = new Date().toISOString();
-            localStorage.setItem(NOTIFIED_EXPENSES_KEY, JSON.stringify(notified));
-        };
-        
-        const now = new Date();
-        const upcomingExpenses = appData.plannedExpenses.map(expense => {
-            const nextPeriod = getNextPeriodToPay(expense);
-            if (!nextPeriod) return null;
-            const [year, month] = nextPeriod.period.split('-').map(Number);
-            const dueDate = new Date(year, month - 1, expense.dueDay);
-            if (now > dueDate) return null;
-            if (expense.reminderDays < 0) return null;
-            const reminderDate = new Date(dueDate);
-            reminderDate.setDate(dueDate.getDate() - expense.reminderDays);
-            const [hours = 9, minutes = 0] = (expense.reminderTime || appData.notifications.defaultReminderTime).split(':').map(Number);
-            reminderDate.setHours(hours, minutes, 0, 0);
-            if (now >= reminderDate) return { ...expense, dueDate, nextPeriod: nextPeriod.period };
-            return null;
-        }).filter(Boolean);
-
-        const notifiedExpenses = getNotifiedExpenses();
-        upcomingExpenses.forEach(expense => {
-            if (!expense) return;
-            const notificationId = `${expense.id}-${expense.nextPeriod}`;
-            if (!notifiedExpenses[notificationId]) {
-                const concept = appData.concepts.find(c => c.id === expense.conceptId);
-                new Notification(`Recordatorio: ${concept?.name}`, {
-                    body: `Tu pago de ${formatCurrency(expense.amountPerPeriod)} vence el ${expense.dueDate.toLocaleDateString('es-MX', {day: 'numeric', month: 'long'})}.`,
-                    icon: "https://picsum.photos/192/192",
-                    tag: notificationId,
-                });
-                setNotifiedExpense(expense.id, expense.nextPeriod);
-            }
-        });
-    }, [appData]);
-
-    if (!appData || !userProfile) {
-        return <div>Cargando datos de la aplicación...</div>;
+    if (!appData) {
+        return <div>Cargando...</div>; 
     }
 
     return (
-        <div className="min-h-screen transition-colors duration-300">
+        <div className="min-h-screen">
             <Header
-                userProfile={userProfile}
                 theme={theme}
                 setTheme={setTheme}
                 setPalette={setPalette}
                 refreshData={refreshData}
                 isRefreshing={isRefreshing}
-                onLogout={logout}
                 appIcon={appIcon}
             />
-            <main className="pt-20 pb-24 md:pb-0">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <Outlet context={{ appIcon, setAppIcon, theme, setTheme, setPalette, installPrompt, handleInstallClick, isInstalled }} />
-                </div>
+            <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pb-8">
+                <Outlet context={{ appIcon, setAppIcon, theme, setTheme, setPalette, installPrompt, handleInstallClick, isInstalled }} />
             </main>
-            <BottomNav />
+
             <button
                 onClick={() => setQuickAddModalOpen(true)}
-                className="fixed bottom-20 md:bottom-6 right-6 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110 z-30"
+                className="fixed bottom-20 md:bottom-8 right-4 sm:right-6 lg:right-8 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg z-40 transition-transform hover:scale-110"
                 aria-label="Añadir registro rápido"
             >
-                <PlusIcon className="w-6 h-6" />
+                <PlusIcon className="w-8 h-8" />
             </button>
             <QuickAddModal 
-                isOpen={isQuickAddModalOpen} 
+                isOpen={isQuickAddModalOpen}
                 onClose={() => setQuickAddModalOpen(false)}
                 data={appData}
                 setData={setData}
             />
+            <BottomNav />
         </div>
     );
 };

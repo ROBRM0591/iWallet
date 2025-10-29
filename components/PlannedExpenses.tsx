@@ -104,7 +104,8 @@ const PlannedExpenseForm: React.FC<{
     setData: (data: AppData) => void;
     defaultActiveTab?: 'details' | 'payments';
 }> = ({ item, concepts, onSave, onCancel, data, setData, defaultActiveTab }) => {
-    const [activeTab, setActiveTab] = useState(defaultActiveTab || 'details');
+    // FIX: Add 'periods' to the type for the activeTab state to allow selection of the "Montos por Periodo" tab.
+    const [activeTab, setActiveTab] = useState<'details' | 'periods' | 'payments'>(defaultActiveTab || 'details');
     
     const currentItem = useMemo(() => {
         if (!item?.id || !data) return item;

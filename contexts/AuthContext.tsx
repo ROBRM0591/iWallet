@@ -1,148 +1,57 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { AppData, UserProfile, LocalSession } from '../types';
-import { hashString } from '../utils/crypto';
-import { BLANK_DATA } from '../constants';
+import { AppData } from '../types';
+import { DEMO_DATA } from '../constants';
+
+export interface UserProfile {
+    username: string;
+    email: string;
+    avatar?: string;
+}
 
 interface AuthContextType {
-  isAuthenticated: boolean;
-  userProfile: UserProfile | null;
-  appData: AppData | null;
-  isLoading: boolean;
-  login: (pin: string) => Promise<boolean>;
-  logout: () => void;
-  setupAccount: (profile: Omit<UserProfile, 'pinHash' | 'securityAnswer2Hash'> & { pin: string; securityAnswer2: string }, initialData: AppData) => Promise<void>;
-  recoverPin: (answers: { answer1: string; answer2: string }, newPin: string) => Promise<boolean>;
-  verifySecurityAnswers: (answers: { answer1: string; answer2: string }) => Promise<boolean>;
+  appData: AppData; // No longer nullable
   setData: (data: AppData) => void;
-  updateUserProfile: (updatedProfile: Partial<UserProfile>) => void;
+  isLoading: boolean;
+  setupAccount: (profile: any, initialData: AppData) => Promise<void>;
+  login: (pin: string) => Promise<boolean>;
+  userProfile: UserProfile | null;
+  verifySecurityAnswers: (answers: { answer1: string; answer2: string; }) => Promise<boolean>;
+  recoverPin: (answers: { answer1: string; answer2:string; }, newPin: string) => Promise<boolean>;
+  isAuthenticated: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [localSession, setLocalSession] = useLocalStorage<LocalSession>('iwallet-session', { userProfile: null, appData: null });
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // By providing DEMO_DATA as the fallback, useLocalStorage ensures appData is never null.
+  // It will either load existing data from localStorage or use DEMO_DATA.
+  const [appData, setAppData] = useLocalStorage<AppData>('iwallet-data', DEMO_DATA);
 
-  useEffect(() => {
-    const bootstrap = async () => {
-      // If there's no user profile or data, it's the first run or data is cleared.
-      if (!localSession.userProfile || !localSession.appData) {
-        // Create default data.
-        const pinHash = await hashString('1234');
-        const securityAnswer2Hash = await hashString('123456');
-        // Set the default session. This will trigger a re-render and this useEffect will run again.
-        setLocalSession({
-          userProfile: {
-            username: 'Usuario',
-            email: 'usuario@iwallet.app',
-            pinHash,
-            securityAnswer1: '2024-01-01',
-            securityAnswer2Hash,
-            avatar: ''
-          },
-          appData: BLANK_DATA
-        });
-        // We wait for the next run of the effect when localSession is populated.
-      } else {
-        // If we have a user profile, we can proceed.
-        // For this app's logic, if a profile exists, we treat them as authenticated (auto-login).
-        setIsAuthenticated(true);
-        // Now that we've established the state, we can stop loading.
-        setIsLoading(false);
-      }
-    };
+  // Since useLocalStorage initializes synchronously, the loading state is no longer needed.
+  // We keep it as `false` to avoid breaking components that might use it.
+  const isLoading = false;
 
-    bootstrap();
-  }, [localSession, setLocalSession]);
-
-  const login = async (pin: string): Promise<boolean> => {
-    if (!localSession.userProfile) return false;
-
-    const pinHash = await hashString(pin);
-    if (pinHash === localSession.userProfile.pinHash) {
-      setIsAuthenticated(true);
-      return true;
-    }
-    return false;
-  };
-
-  const logout = () => {
-    // With auto-login enabled, logout only works for the current session.
-    // A page refresh will log the user back in automatically.
-    setIsAuthenticated(false);
-  };
-
-  const setupAccount = async (profile: Omit<UserProfile, 'pinHash' | 'securityAnswer2Hash'> & { pin: string; securityAnswer2: string }, initialData: AppData) => {
-    const pinHash = await hashString(profile.pin);
-    const securityAnswer2Hash = await hashString(profile.securityAnswer2);
-    
-    const newUserProfile: UserProfile = {
-        username: profile.username,
-        email: profile.email,
-        pinHash,
-        securityAnswer1: profile.securityAnswer1,
-        securityAnswer2Hash,
-        avatar: '',
-    };
-    
-    setLocalSession({ userProfile: newUserProfile, appData: initialData });
-    setIsAuthenticated(true); // Automatically log in after setup
-  };
-
-    const verifySecurityAnswers = async (answers: { answer1: string; answer2: string }): Promise<boolean> => {
-        if (!localSession.userProfile) return false;
-
-        const answer2Hash = await hashString(answers.answer2);
-
-        return (
-            answers.answer1 === localSession.userProfile.securityAnswer1 &&
-            answer2Hash === localSession.userProfile.securityAnswer2Hash
-        );
-    };
-
-    const recoverPin = async (answers: { answer1: string; answer2: string }, newPin: string): Promise<boolean> => {
-        const areAnswersCorrect = await verifySecurityAnswers(answers);
-        if (areAnswersCorrect && localSession.userProfile) {
-            const newPinHash = await hashString(newPin);
-            const updatedProfile = { ...localSession.userProfile, pinHash: newPinHash };
-            setLocalSession(prev => ({ ...prev, userProfile: updatedProfile }));
-            return true;
-        }
-        return false;
-    };
-
-    const setData = (data: AppData) => {
-        setLocalSession(prev => ({ ...prev, appData: data }));
-    };
-
-    const updateUserProfile = (updatedProfile: Partial<UserProfile>) => {
-        setLocalSession(prev => {
-            if (!prev.userProfile) return prev;
-            return {
-                ...prev,
-                userProfile: {
-                    ...prev.userProfile,
-                    ...updatedProfile
-                }
-            };
-        });
-    };
+  // Dummy implementations for unused auth functions
+  const setupAccount = async (profile: any, initialData: AppData) => { console.log('setupAccount called', profile, initialData); };
+  const login = async (pin: string) => { console.log('login called with pin', pin); return true; };
+  const userProfile = null;
+  const verifySecurityAnswers = async (answers: any) => { console.log('verifySecurityAnswers called', answers); return true; };
+  const recoverPin = async (answers: any, newPin: string) => { console.log('recoverPin called', answers, newPin); return true; };
+  const isAuthenticated = !!appData;
 
   return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      userProfile: localSession.userProfile,
-      appData: localSession.appData,
-      isLoading,
-      login,
-      logout,
-      setupAccount,
-      recoverPin,
-      verifySecurityAnswers,
-      setData,
-      updateUserProfile
+    <AuthContext.Provider value={{ 
+        appData,
+        // FIX: Correctly provide `setData` by aliasing `setAppData` from the `useLocalStorage` hook.
+        setData: setAppData, 
+        isLoading,
+        setupAccount,
+        login,
+        userProfile,
+        verifySecurityAnswers,
+        recoverPin,
+        isAuthenticated
     }}>
       {children}
     </AuthContext.Provider>

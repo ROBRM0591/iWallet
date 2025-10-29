@@ -1,11 +1,7 @@
 import React, { useContext } from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './contexts/AuthContext';
 import { MainLayout } from './components/MainLayout';
-import { Setup } from './components/auth/Setup';
-import { Login } from './components/auth/Login';
-import { RecoverPin } from './components/auth/RecoverPin';
-import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { WalletIcon } from './components/Icons';
 import { Dashboard } from './components/Dashboard';
 import { DailyExpenses } from './components/DailyExpenses';
@@ -35,24 +31,17 @@ const AppRoutes: React.FC = () => {
         throw new Error("AuthContext not found");
     }
 
-    const { isLoading, isAuthenticated, userProfile } = context;
+    const { isLoading, appData } = context;
 
-    if (isLoading) {
+    if (isLoading || !appData) {
         return <LoadingScreen />;
     }
 
     return (
         <Routes>
-            <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
-            <Route path="/setup" element={!userProfile ? <Setup /> : <Navigate to="/login" />} />
-            <Route path="/recover" element={!isAuthenticated ? <RecoverPin /> : <Navigate to="/" />} />
             <Route
                 path="/"
-                element={
-                    <ProtectedRoute>
-                        <MainLayout />
-                    </ProtectedRoute>
-                }
+                element={<MainLayout />}
             >
                 <Route index element={<Dashboard />} />
                 <Route path="incomes" element={<Incomes />} />
@@ -67,6 +56,7 @@ const AppRoutes: React.FC = () => {
                 <Route path="settings" element={<Settings />} />
                 <Route path="ai-assistant" element={<ChatHistory />} />
             </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );
 };
