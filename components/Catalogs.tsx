@@ -903,7 +903,7 @@ export const Catalogs: React.FC = () => {
     const handleDelete = (key: CatalogKey, id: string) => {
         setData({
             ...data,
-            [key]: data[key].filter((i: CatalogItem) => i.id !== id),
+            [key]: (data[key] as CatalogItem[]).filter((i: CatalogItem) => i.id !== id),
         });
     };
     
@@ -1054,8 +1054,8 @@ export const Catalogs: React.FC = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {filteredData.movementTypes.map(item => (
                                 <div key={item.id} className="bg-gray-100 dark:bg-slate-800/50 p-3 rounded-lg flex items-center gap-3">
-                                    <div className={`p-2 rounded-full ${item.name === 'Ingreso' ? 'bg-green-100 dark:bg-green-500/20' : 'bg-red-100 dark:bg-red-500/20'}`}>
-                                        <ArrowsUpDownIcon className={`w-5 h-5 ${item.name === 'Ingreso' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}/>
+                                    <div className={`p-2 rounded-full ${item.name === MovementTypeName.INGRESO ? 'bg-green-100 dark:bg-green-500/20' : 'bg-red-100 dark:bg-red-500/20'}`}>
+                                        <ArrowsUpDownIcon className={`w-5 h-5 ${item.name === MovementTypeName.INGRESO ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}/>
                                     </div>
                                     <span className="font-semibold">{item.name}</span>
                                 </div>
@@ -1063,8 +1063,8 @@ export const Catalogs: React.FC = () => {
                         </div>
                         <CatalogManager
                             title="Tipos de Movimiento" singularTitle="Tipo de Movimiento" items={filteredData.movementTypes}
-                            onAdd={(item) => handleAdd('movementTypes', item)} onUpdate={(item) => handleUpdate('movementTypes', item)} onDelete={(id) => handleDelete('movementTypes', id)}
-                            renderForm={(item, onSave, onCancel) => <MovementTypeForm item={item as Partial<MovementType>} onSave={onSave} onCancel={onCancel} />}
+                            onAdd={(item) => handleAdd('movementTypes', item as MovementType)} onUpdate={(item) => handleUpdate('movementTypes', item as MovementType)} onDelete={(id) => handleDelete('movementTypes', id)}
+                            renderForm={(item, onSave, onCancel) => <MovementTypeForm item={item as Partial<MovementType>} onSave={onSave as (item: MovementType) => void} onCancel={onCancel} />}
                             renderTable={(items, onEdit, onDelete) => <GenericTable items={items} onEdit={onEdit} onDelete={onDelete} />}
                             csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }]} onImport={(d) => handleImport('movementTypes', d)}
                             onExportSuccess={() => handleExportSuccess('Tipos de Movimiento')}
@@ -1086,8 +1086,8 @@ export const Catalogs: React.FC = () => {
                         </div>
                          <CatalogManager
                             title="Tipos de Costo" singularTitle="Tipo de Costo" items={filteredData.costTypes}
-                            onAdd={(item) => handleAdd('costTypes', item)} onUpdate={(item) => handleUpdate('costTypes', item)} onDelete={(id) => handleDelete('costTypes', id)}
-                            renderForm={(item, onSave, onCancel) => <CostTypeForm item={item as Partial<CostType>} movementTypes={data.movementTypes} onSave={onSave} onCancel={onCancel} />}
+                            onAdd={(item) => handleAdd('costTypes', item as CostType)} onUpdate={(item) => handleUpdate('costTypes', item as CostType)} onDelete={(id) => handleDelete('costTypes', id)}
+                            renderForm={(item, onSave, onCancel) => <CostTypeForm item={item as Partial<CostType>} movementTypes={data.movementTypes} onSave={onSave as (item: CostType) => void} onCancel={onCancel} />}
                             renderTable={(items, onEdit, onDelete) => <CostTypeTable items={items as CostType[]} data={data} onEdit={onEdit as (item: CostType) => void} onDelete={onDelete} />}
                             csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }]}
                             onImport={(d) => handleImport('costTypes', d)} onExportSuccess={() => handleExportSuccess('Tipos de Costo')}
@@ -1097,8 +1097,8 @@ export const Catalogs: React.FC = () => {
             case 'Categorías':
                  return <CatalogManager
                         title="Categorías" singularTitle="Categoría" items={filteredData.categories}
-                        onAdd={(item) => handleAdd('categories', item)} onUpdate={(item) => handleUpdate('categories', item)} onDelete={(id) => handleDelete('categories', id)}
-                        renderForm={(item, onSave, onCancel) => <CategoryForm item={item as Partial<Category>} data={data} onSave={onSave} onCancel={onCancel} />}
+                        onAdd={(item) => handleAdd('categories', item as Category)} onUpdate={(item) => handleUpdate('categories', item as Category)} onDelete={(id) => handleDelete('categories', id)}
+                        renderForm={(item, onSave, onCancel) => <CategoryForm item={item as Partial<Category>} data={data} onSave={onSave as (item: Category) => void} onCancel={onCancel} />}
                         renderTable={(items, onEdit, onDelete) => <CategoryTable items={items as Category[]} data={data} onEdit={onEdit as (item: Category) => void} onDelete={onDelete} />}
                         csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}]}
                         onImport={(d) => handleImport('categories', d)} onExportSuccess={() => handleExportSuccess('Categorías')}
@@ -1106,8 +1106,8 @@ export const Catalogs: React.FC = () => {
             case 'Conceptos':
                 return <CatalogManager
                         title="Conceptos" singularTitle="Concepto" items={filteredData.concepts}
-                        onAdd={(item) => handleAdd('concepts', item)} onUpdate={(item) => handleUpdate('concepts', item)} onDelete={(id) => handleDelete('concepts', id)}
-                        renderForm={(item, onSave, onCancel) => <ConceptForm item={item as Partial<Concept>} data={data} onSave={onSave} onCancel={onCancel} />}
+                        onAdd={(item) => handleAdd('concepts', item as Concept)} onUpdate={(item) => handleUpdate('concepts', item as Concept)} onDelete={(id) => handleDelete('concepts', id)}
+                        renderForm={(item, onSave, onCancel) => <ConceptForm item={item as Partial<Concept>} data={data} onSave={onSave as (item: Concept) => void} onCancel={onCancel} />}
                         renderTable={(items, onEdit, onDelete) => <ConceptTable items={items as Concept[]} data={data} onEdit={onEdit as (item: Concept) => void} onDelete={onDelete} />}
                         csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'categoryId', label: 'ID Categoría' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}]}
                         onImport={(d) => handleImport('concepts', d)} onExportSuccess={() => handleExportSuccess('Conceptos')}

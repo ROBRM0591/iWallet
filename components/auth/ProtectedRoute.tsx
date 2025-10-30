@@ -1,12 +1,8 @@
-import React, { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-interface ProtectedRouteProps {
-  children: ReactNode;
-}
-
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+export const ProtectedRoute: React.FC = () => {
   const { isAuthenticated, userProfile } = useAuth();
   const location = useLocation();
 
@@ -20,5 +16,5 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 };

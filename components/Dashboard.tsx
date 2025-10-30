@@ -4,9 +4,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTo
 import { getNextPeriodToPay, generateSequentialId, generatePeriods, getStatusInfo, toDateKey } from './utils';
 import { IconDisplay } from './IconDisplay';
 import { useAuth } from '../contexts/AuthContext';
-import { PlannedExpense, Payment, Concept, Priority } from '../types';
+import { PlannedExpense, Payment, Concept, Priority, SavingsGoal } from '../types';
 import { ArrowUpIcon, ArrowDownIcon, BriefcaseIcon, ClockIcon, CurrencyDollarIcon, WarningIcon, CloseIcon, ChevronDownIcon, CheckCircleIcon } from './Icons';
-import { CalendarGrid } from './CalendarGrid';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
@@ -46,8 +45,8 @@ const SummaryCard: React.FC<{ title: string; amount: number; icon: React.ReactNo
     </GlassCard>
 );
 
-const SavingsGoalChart: React.FC<{ goal: any }> = ({ goal }) => {
-    const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+const SavingsGoalChart: React.FC<{ goal: SavingsGoal }> = ({ goal }) => {
+    const progress = Number(goal.targetAmount) > 0 ? (Number(goal.currentAmount) / Number(goal.targetAmount)) * 100 : 0;
     const data = [
         { name: 'Progress', value: progress },
         { name: 'Remaining', value: Math.max(0, 100 - progress) },
@@ -157,13 +156,9 @@ export const Dashboard: React.FC = () => {
     
     const today = new Date();
     today.setHours(0,0,0,0);
-    const [selectedDate, setSelectedDate] = useState<Date>(today);
-    const [calendarDate, setCalendarDate] = useState(new Date());
     const [expandedDueId, setExpandedDueId] = useState<string | null>(null);
     const [paymentForm, setPaymentForm] = useState<{ amount: number | string, date: string }>({ amount: '', date: toDateKey(today) });
     
-    const currentDateLabel = new Date(calendarDate.getFullYear(), calendarDate.getMonth()).toLocaleDateString('es-MX', { month: 'long', year: 'numeric'});
-
     if (!data) {
         return <div className="text-white text-center">Cargando...</div>;
     }
@@ -188,34 +183,36 @@ export const Dashboard: React.FC = () => {
         setExpandedDueId(null);
     };
 
-    const { summary, periodDues, categorySpendingData, firstSavingsGoal, transactionDates } = useMemo(() => {
-        const startOfMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
-        const endOfMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0, 23, 59, 59);
+    const { summary, periodDues, categorySpendingData, firstSavingsGoal } = useMemo(() => {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
         const periodIncome = data.incomes
             .filter(i => { const d = new Date(i.date); return d >= startOfMonth && d <= endOfMonth; })
-            .reduce((sum, i) => sum + i.amount, 0);
+            .reduce((sum, i) => sum + Number(i.amount), 0);
 
         const periodDailyExpenses = data.dailyExpenses
             .filter(e => { const d = new Date(e.date); return d >= startOfMonth && d <= endOfMonth; })
-            .reduce((sum, e) => sum + e.amount, 0);
+            .reduce((sum, e) => sum + Number(e.amount), 0);
 
         const periodPaidPlannedExpenses = data.plannedExpenses.reduce((sum, expense) => sum + (expense.payments || [])
                 .filter(p => { const d = new Date(p.date); return d >= startOfMonth && d <= endOfMonth; })
-                .reduce((pSum, p) => pSum + p.amount, 0), 0);
+                .reduce((pSum, p) => pSum + Number(p.amount), 0), 0);
 
         const periodExpenses = periodDailyExpenses + periodPaidPlannedExpenses;
         const periodBalance = periodIncome - periodExpenses;
 
-        const periodStr = `${calendarDate.getFullYear()}-${(calendarDate.getMonth() + 1).toString().padStart(2, '0')}`;
+        const periodStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
         const totalPlannedForMonth = data.plannedExpenses.reduce((sum, pe) => {
-            return sum + (generatePeriods(pe).includes(periodStr) ? (pe.periodOverrides?.[periodStr] ?? pe.amountPerPeriod) : 0);
+            const amountForPeriod = generatePeriods(pe).includes(periodStr) ? (pe.periodOverrides?.[periodStr] ?? pe.amountPerPeriod) : 0;
+            return sum + Number(amountForPeriod);
         }, 0);
 
         const paidOnPlannedForMonth = data.plannedExpenses.reduce((sum, pe) => {
             return sum + (pe.payments || [])
                 .filter(p => p.period === periodStr)
-                .reduce((pSum, p) => pSum + p.amount, 0);
+                .reduce((pSum, p) => pSum + Number(p.amount), 0);
         }, 0);
         
         const pendingInPeriod = totalPlannedForMonth - paidOnPlannedForMonth;
@@ -227,14 +224,14 @@ export const Dashboard: React.FC = () => {
             if (generatePeriods(expense).includes(periodStr)) {
                 const paymentsByPeriod = new Map<string, number>();
                 (expense.payments || []).forEach(p => {
-                    paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + p.amount);
+                    paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + Number(p.amount));
                 });
                 
                 const paidInPeriod = paymentsByPeriod.get(periodStr) || 0;
-                const amountForPeriod = expense.periodOverrides?.[periodStr] ?? expense.amountPerPeriod;
+                const amountForPeriod = Number(expense.periodOverrides?.[periodStr] ?? expense.amountPerPeriod);
                 const concept = data.concepts.find(c => c.id === expense.conceptId);
                 const status = getStatusInfo(expense, getNextPeriodToPay(expense));
-                const dueDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), expense.dueDay);
+                const dueDate = new Date(now.getFullYear(), now.getMonth(), expense.dueDay);
                 dues.push({ ...expense, concept, amountForPeriod, paidInPeriod, status, dueDate, duePeriod: periodStr });
             }
         });
@@ -245,13 +242,13 @@ export const Dashboard: React.FC = () => {
         [...data.dailyExpenses, ...data.plannedExpenses.flatMap(pe => pe.payments || [])].forEach(transaction => {
             const tDate = new Date(transaction.date);
             if (tDate >= startOfMonth && tDate <= endOfMonth) {
-                totalSpendingThisMonth += transaction.amount;
+                totalSpendingThisMonth += Number(transaction.amount);
                 const conceptId = 'conceptId' in transaction ? transaction.conceptId : data.plannedExpenses.find(pe => (pe.payments || []).some(p => p.id === transaction.id))?.conceptId;
                 if(conceptId) {
                     const concept = data.concepts.find(c => c.id === conceptId);
                     if (concept?.categoryId) {
                         const categoryName = data.categories.find(cat => cat.id === concept.categoryId)?.name || 'Sin Categoría';
-                        categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + transaction.amount);
+                        categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + Number(transaction.amount));
                     }
                 }
             }
@@ -259,84 +256,14 @@ export const Dashboard: React.FC = () => {
         const spendingData = Array.from(categoryMap.entries())
             .map(([name, value]) => ({ name, value, percent: totalSpendingThisMonth > 0 ? value / totalSpendingThisMonth : 0 }))
             .sort((a, b) => b.value - a.value);
-            
-        // For calendar
-        const dates = new Map<string, { income: boolean, expense: boolean, due: boolean, duePriority: Priority }>();
-        const processDate = (dateStr: string, type: 'income' | 'expense') => {
-            const dateKey = toDateKey(new Date(dateStr));
-            const existing = dates.get(dateKey) || { income: false, expense: false, due: false, duePriority: Priority.BAJA };
-            existing[type] = true;
-            dates.set(dateKey, existing);
-        };
-        data.incomes.forEach(i => processDate(i.date, 'income'));
-        data.dailyExpenses.forEach(e => processDate(e.date, 'expense'));
-        data.plannedExpenses.forEach(pe => {
-            (pe.payments || []).forEach(p => processDate(p.date, 'expense'));
-
-            const allPeriods = generatePeriods(pe);
-            
-            allPeriods.forEach((period, index) => {
-                const paidInPeriod = (pe.payments || []).filter(p => p.period === period).reduce((sum, p) => sum + p.amount, 0);
-                const amountForPeriod = pe.periodOverrides?.[period] ?? pe.amountPerPeriod;
-
-                if (paidInPeriod < amountForPeriod) {
-                    const [pYear, pMonth] = period.split('-').map(Number);
-                    const dueDate = new Date(pYear, pMonth - 1, pe.dueDay);
-                    const dateKey = toDateKey(dueDate);
-                    const status = getStatusInfo(pe, { period, index });
-    
-                    const existing = dates.get(dateKey) || { income: false, expense: false, due: false, duePriority: Priority.BAJA };
-                    existing.due = true;
-                    if (priorityOrder[status.priority] > priorityOrder[existing.duePriority]) {
-                        existing.duePriority = status.priority;
-                    }
-                    dates.set(dateKey, existing);
-                }
-            });
-        });
 
         return {
             summary,
             periodDues: dues.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime()),
             categorySpendingData: spendingData,
             firstSavingsGoal: data.savingsGoals.length > 0 ? data.savingsGoals[0] : null,
-            transactionDates: dates,
         };
-    }, [data, calendarDate]);
-    
-    const renderDayCell = useCallback((date: Date) => {
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        date.setHours(0,0,0,0);
-
-        const dateKey = toDateKey(date);
-        const dayData = transactionDates.get(dateKey);
-        
-        const isSelected = selectedDate ? date.getTime() === selectedDate.getTime() : false;
-        const isToday = date.getTime() === today.getTime();
-
-        let cellClass = `relative flex flex-col items-center justify-center h-16 w-full rounded-lg cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-white/10 ${date.getMonth() !== calendarDate.getMonth() ? 'text-gray-400 dark:text-gray-500' : ''}`;
-        if (isSelected) cellClass += " bg-primary-600/80 dark:bg-primary-700/80 text-white";
-        else if (isToday) cellClass += " ring-2 ring-primary-500";
-        
-        let dotColorClass = '';
-        if(dayData?.due){
-            if(dayData.duePriority === Priority.ALTA) dotColorClass = 'bg-red-500';
-            else if (dayData.duePriority === Priority.MEDIA) dotColorClass = 'bg-yellow-500';
-            else dotColorClass = 'bg-blue-500';
-        }
-
-        return (
-            <div className={cellClass}>
-                <span>{date.getDate()}</span>
-                <div className="absolute bottom-1.5 flex gap-1">
-                    {dayData?.income && <div className="w-1.5 h-1.5 rounded-full bg-green-500" title="Ingreso"></div>}
-                    {dayData?.expense && <div className="w-1.5 h-1.5 rounded-full bg-red-500" title="Gasto"></div>}
-                    {dayData?.due && <div className={`w-1.5 h-1.5 rounded-full ${dotColorClass}`} title="Vencimiento"></div>}
-                </div>
-            </div>
-        );
-    }, [selectedDate, transactionDates, calendarDate]);
+    }, [data]);
     
     return (
         <div className="space-y-6">
@@ -360,26 +287,15 @@ export const Dashboard: React.FC = () => {
                 <SummaryCard title="Pendiente en el Mes" amount={summary.pendingInPeriod} icon={<ClockIcon className="w-6 h-6 text-yellow-400" />} />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <GlassCard className="p-4 animate-fadeInUp" style={{animationDelay: '100ms'}}>
-                        <CalendarGrid
-                           currentDate={calendarDate}
-                           onDateClick={(date) => setSelectedDate(date)}
-                           renderDay={renderDayCell}
-                           onPrevMonth={() => setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                           onNextMonth={() => setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                        />
-                    </GlassCard>
-                     <GlassCard className="p-6 animate-fadeInUp" style={{animationDelay: '200ms'}}>
-                        <h3 className="font-bold text-xl mb-4">Gastos del Mes por Categoría</h3>
-                        {categorySpendingData.length > 0 ? (
-                            <CategoryDonutChart data={categorySpendingData} />
-                        ) : (
-                            <div className="text-center text-gray-500 dark:text-gray-400 my-auto flex-grow flex flex-col justify-center items-center h-48">No hay gastos este mes.</div>
-                        )}
-                    </GlassCard>
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <GlassCard className="p-6 animate-fadeInUp" style={{animationDelay: '200ms'}}>
+                    <h3 className="font-bold text-xl mb-4">Gastos del Mes por Categoría</h3>
+                    {categorySpendingData.length > 0 ? (
+                        <CategoryDonutChart data={categorySpendingData} />
+                    ) : (
+                        <div className="text-center text-gray-500 dark:text-gray-400 my-auto flex-grow flex flex-col justify-center items-center h-48">No hay gastos este mes.</div>
+                    )}
+                </GlassCard>
                 
                 <div className="space-y-6">
                      <GlassCard className="p-6 flex flex-col animate-fadeInUp" style={{animationDelay: '300ms'}}>

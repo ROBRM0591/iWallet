@@ -1,6 +1,6 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, AuthContext } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { MainLayout } from './components/MainLayout';
 import { WalletIcon } from './components/Icons';
 import { Dashboard } from './components/Dashboard';
@@ -15,34 +15,49 @@ import { DebtCalculator } from './components/DebtCalculator';
 import { UserManual } from './components/UserManual';
 import { Settings } from './components/Settings';
 import { ChatHistory } from './components/ChatHistory';
-
+import { Setup } from './components/auth/Setup';
+import { Login } from './components/auth/Login';
+import { RecoverPin } from './components/auth/RecoverPin';
 
 const LoadingScreen: React.FC = () => (
-    <div className="flex flex-col justify-center items-center h-screen bg-gray-900">
+    <div className="flex flex-col justify-center items-center h-screen bg-slate-50 dark:bg-slate-900">
         <WalletIcon className="h-16 w-16 text-primary-500 animate-pulse" />
-        <p className="mt-4 text-lg font-semibold text-gray-300">Cargando iWallet...</p>
+        <p className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-300">Cargando iWallet...</p>
     </div>
 );
 
 const AppRoutes: React.FC = () => {
-    const context = useContext(AuthContext);
+    const { isLoading, userProfile, isAuthenticated } = useAuth();
 
-    if (!context) {
-        throw new Error("AuthContext not found");
-    }
-
-    const { isLoading, appData } = context;
-
-    if (isLoading || !appData) {
+    if (isLoading) {
         return <LoadingScreen />;
     }
+    
+    // Nuevo usuario, debe configurar su cuenta
+    if (!userProfile) {
+        return (
+             <Routes>
+                <Route path="/setup" element={<Setup />} />
+                <Route path="*" element={<Navigate to="/setup" replace />} />
+            </Routes>
+        );
+    }
 
+    // Usuario existente, no autenticado
+    if (!isAuthenticated) {
+        return (
+             <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/recover" element={<RecoverPin />} />
+                <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+        );
+    }
+
+    // Usuario autenticado
     return (
         <Routes>
-            <Route
-                path="/"
-                element={<MainLayout />}
-            >
+            <Route path="/" element={<MainLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="incomes" element={<Incomes />} />
                 <Route path="daily-expenses" element={<DailyExpenses />} />
@@ -56,6 +71,10 @@ const AppRoutes: React.FC = () => {
                 <Route path="settings" element={<Settings />} />
                 <Route path="ai-assistant" element={<ChatHistory />} />
             </Route>
+            {/* Si un usuario autenticado intenta acceder a rutas públicas, redirigir a la página principal */}
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/recover" element={<Navigate to="/" replace />} />
+            <Route path="/setup" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );

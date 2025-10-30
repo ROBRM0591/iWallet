@@ -1,118 +1,123 @@
-export enum Frequency {
-  MENSUAL = 'mensual',
-  BIMESTRAL = 'bimestral',
+export enum MovementTypeName {
+    INGRESO = 'INGRESO',
+    GASTO = 'GASTO',
 }
 
-export enum MovementTypeName {
-  GASTO = 'Gasto',
-  INGRESO = 'Ingreso',
+export enum Frequency {
+    MENSUAL = 'MENSUAL',
+    BIMESTRAL = 'BIMESTRAL',
 }
 
 export enum Priority {
-  ALTA = 'alta',
-  MEDIA = 'media',
-  BAJA = 'baja',
+    BAJA = 'BAJA',
+    MEDIA = 'MEDIA',
+    ALTA = 'ALTA',
 }
 
-export interface CatalogItem {
-  id: string;
-  name: string;
+export interface MovementType {
+    id: string;
+    name: MovementTypeName;
 }
 
-export interface Category extends CatalogItem {
-  movementTypeId: string;
-  costTypeId: string;
-  description?: string;
-  icon?: string;
-  iconColor?: string;
+export interface CostType {
+    id: string;
+    name: string;
+    movementTypeId: string;
 }
 
-export interface CostType extends CatalogItem {
-  name: string;
-  movementTypeId: string;
+export interface Category {
+    id: string;
+    name: string;
+    description?: string;
+    movementTypeId: string;
+    costTypeId: string;
+    icon?: string;
+    iconColor?: string;
 }
 
-export interface MovementType extends CatalogItem {
-  name: MovementTypeName;
+export interface Concept {
+    id: string;
+    name: string;
+    description?: string;
+    categoryId: string;
+    movementTypeId: string;
+    costTypeId: string;
+    icon?: string;
+    iconColor?: string;
 }
 
-export interface Concept extends CatalogItem {
-  movementTypeId: string;
-  categoryId?: string;
-  costTypeId?: string;
-  description?: string;
-  icon?: string;
-  iconColor?: string;
-}
-
-export interface BaseTransaction {
-  id: string;
-  amount: number;
-  date: string; // ISO String
-}
-
-export interface DailyExpense extends BaseTransaction {
-  conceptId: string;
-}
-
-export interface Income extends BaseTransaction {
-  description: string;
-}
-
-export interface PlannedExpense {
-  id:string;
-  conceptId: string;
-  icon?: string;
-  iconColor?: string;
-  amountPerPeriod: number;
-  periodOverrides?: Record<string, number>; // { 'YYYY-MM': amount }
-  cutOffDay: number;
-  dueDay: number;
-  startPeriod: string; // YYYY-MM
-  frequency: Frequency;
-  periods: number;
-  reminderDays: number; // Days before due date to remind. -1 to disable.
-  reminderTime?: string; // HH:mm
-  payments: Payment[];
+export interface DailyExpense {
+    id: string;
+    date: string; // ISO 8601 format
+    amount: number;
+    conceptId: string;
+    notes?: string;
 }
 
 export interface Payment {
-  id: string;
-  amount: number;
-  date: string; // ISO String
-  period: string; // YYYY-MM
+    id: string;
+    date: string; // ISO 8601 format
+    amount: number;
+    period: string; // e.g. "2024-07"
 }
 
-export interface SavingsGoal {
-  id: string;
-  name: string;
-  icon?: string;
-  iconColor?: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline: string; // ISO String
+export interface PlannedExpense {
+    id: string;
+    conceptId: string;
+    amountPerPeriod: number;
+    startPeriod: string; // YYYY-MM
+    frequency: Frequency;
+    periods: number;
+    cutOffDay: number;
+    dueDay: number;
+    reminderDays: number;
+    reminderTime: string; // HH:mm
+    payments: Payment[];
+    periodOverrides?: Record<string, number>;
+    icon?: string;
+    iconColor?: string;
+}
+
+export interface Income {
+    id: string;
+    date: string; // ISO 8601 format
+    amount: number;
+    description: string;
+    notes?: string;
 }
 
 export interface MonthlyBudget {
-  id: string;
-  categoryId: string;
-  amount: number;
+    id: string;
+    categoryId: string;
+    amount: number;
+    month: number; // 0 for January, 11 for December
+    year: number;
 }
 
-export interface NotificationSettings {
-  defaultReminderDays: number; // Days before due date to remind. -1 to disable.
-  defaultReminderTime: string; // HH:mm
+export interface SavingsGoal {
+    id: string;
+    name: string;
+    targetAmount: number;
+    currentAmount: number;
+    deadline: string; // ISO 8601 format
+    icon?: string;
+    iconColor?: string;
 }
 
 export interface AppData {
-  categories: Category[];
-  costTypes: CostType[];
-  movementTypes: MovementType[];
-  concepts: Concept[];
-  dailyExpenses: DailyExpense[];
-  incomes: Income[];
-  plannedExpenses: PlannedExpense[];
-  savingsGoals: SavingsGoal[];
-  monthlyBudgets: MonthlyBudget[];
-  notifications: NotificationSettings;
+    movementTypes: MovementType[];
+    costTypes: CostType[];
+    categories: Category[];
+    concepts: Concept[];
+    dailyExpenses: DailyExpense[];
+    plannedExpenses: PlannedExpense[];
+    incomes: Income[];
+    monthlyBudgets: MonthlyBudget[];
+    savingsGoals: SavingsGoal[];
+    notifications: {
+        defaultReminderDays: number;
+        defaultReminderTime: string;
+    };
 }
+
+export type CatalogItem = Category | Concept | CostType | MovementType;

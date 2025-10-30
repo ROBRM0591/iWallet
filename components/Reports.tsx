@@ -233,8 +233,6 @@ export const Reports: React.FC = () => {
             return { filteredTransactions: [], categorySpendingData: [], incomeVsExpenseData: [], uniqueCategories: [] };
         }
         
-        // FIX: `new Date('YYYY-MM-DD')` is parsed as UTC. For timezone consistency,
-        // we parse the date components to ensure it's interpreted in the user's local timezone.
         const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
         const start = new Date(sYear, sMonth - 1, sDay);
         

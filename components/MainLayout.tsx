@@ -99,8 +99,9 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
             if (nextPeriod) {
                 const paidInPeriod = expense.payments
                     .filter(p => p.period === nextPeriod.period)
-                    .reduce((sum, p) => sum + p.amount, 0);
-                const remaining = (expense.periodOverrides?.[nextPeriod.period] ?? expense.amountPerPeriod) - paidInPeriod;
+                    .reduce((sum, p) => sum + Number(p.amount), 0);
+                const amountForPeriod = expense.periodOverrides?.[nextPeriod.period] ?? expense.amountPerPeriod;
+                const remaining = Number(amountForPeriod) - paidInPeriod;
                 setPaymentState(s => ({ ...s, period: nextPeriod.period, remaining, amount: remaining > 0 ? remaining : 0 }));
             }
         } else {

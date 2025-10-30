@@ -102,9 +102,8 @@ const PlannedExpenseForm: React.FC<{
     onCancel: () => void;
     data: AppData;
     setData: (data: AppData) => void;
-    defaultActiveTab?: 'details' | 'payments';
+    defaultActiveTab?: 'details' | 'payments' | 'periods';
 }> = ({ item, concepts, onSave, onCancel, data, setData, defaultActiveTab }) => {
-    // FIX: Add 'periods' to the type for the activeTab state to allow selection of the "Montos por Periodo" tab.
     const [activeTab, setActiveTab] = useState<'details' | 'periods' | 'payments'>(defaultActiveTab || 'details');
     
     const currentItem = useMemo(() => {
@@ -116,7 +115,7 @@ const PlannedExpenseForm: React.FC<{
         if (!currentItem?.payments) return new Map<string, number>();
         const map = new Map<string, number>();
         (currentItem.payments || []).forEach(p => {
-            map.set(p.period, (map.get(p.period) || 0) + p.amount);
+            map.set(p.period, (map.get(p.period) || 0) + Number(p.amount));
         });
         return map;
     }, [currentItem?.payments]);
@@ -161,13 +160,13 @@ const PlannedExpenseForm: React.FC<{
         const paymentsByPeriod = new Map<string, number>();
 
         (currentItem.payments || []).forEach(p => {
-            paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + p.amount);
+            paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + Number(p.amount));
         });
 
         return allPeriods.filter(period => {
             const paidAmount = paymentsByPeriod.get(period) || 0;
             const amountForPeriod = (currentItem as PlannedExpense).periodOverrides?.[period] ?? (currentItem as PlannedExpense).amountPerPeriod;
-            return paidAmount < amountForPeriod;
+            return paidAmount < Number(amountForPeriod);
         });
     }, [currentItem]);
     
@@ -175,8 +174,8 @@ const PlannedExpenseForm: React.FC<{
         if (paymentPeriod && currentItem) {
             const paidInPeriod = (currentItem.payments || [])
                 .filter(p => p.period === paymentPeriod)
-                .reduce((sum, p) => sum + p.amount, 0);
-            const amountForPeriod = currentItem.periodOverrides?.[paymentPeriod] ?? currentItem.amountPerPeriod;
+                .reduce((sum, p) => sum + Number(p.amount), 0);
+            const amountForPeriod = Number(currentItem.periodOverrides?.[paymentPeriod] ?? currentItem.amountPerPeriod);
             const remaining = amountForPeriod - paidInPeriod;
             setPaymentRemaining(remaining);
             setPaymentAmount(remaining > 0 ? remaining : 0);
@@ -188,7 +187,7 @@ const PlannedExpenseForm: React.FC<{
     }, [paymentPeriod, currentItem]);
 
     const generatedFormPeriods = useMemo(() => {
-        return generatePeriods({ ...formState, id: '', payments: [] });
+        return generatePeriods({ ...formState, id: '', payments: [] } as PlannedExpense);
     }, [formState.startPeriod, formState.periods, formState.frequency]);
 
     const handleOverrideChange = (period: string, value: string) => {
@@ -300,7 +299,7 @@ const PlannedExpenseForm: React.FC<{
                     <p className="text-sm text-gray-600 dark:text-gray-300">Ajusta los montos para periodos específicos. Si un campo se deja vacío, se usará el monto por periodo predeterminado de {formatCurrency(formState.amountPerPeriod)}.</p>
                     <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
                         {generatedFormPeriods.map((period, index) => {
-                            const amountForPeriod = periodOverrides[period] ?? formState.amountPerPeriod;
+                            const amountForPeriod = Number(periodOverrides[period] ?? formState.amountPerPeriod);
                             const paidInPeriod = paymentsByPeriod.get(period) || 0;
                             const isPaid = paidInPeriod >= amountForPeriod && amountForPeriod > 0;
 
@@ -405,7 +404,7 @@ export const PlannedExpenses: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingItem, setEditingItem] = useState<{ item: PlannedExpense | null, defaultTab: 'details' | 'payments' }>({ item: null, defaultTab: 'details' });
+    const [editingItem, setEditingItem] = useState<{ item: PlannedExpense | null, defaultTab: 'details' | 'payments' | 'periods' }>({ item: null, defaultTab: 'details' });
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
     const [view, setView] = useState<'list' | 'calendar'>('list');
@@ -424,7 +423,7 @@ export const PlannedExpenses: React.FC = () => {
         }
     }, [location.state, data?.plannedExpenses, navigate]);
     
-    const handleOpenModal = (item: PlannedExpense | null = null, defaultTab: 'details' | 'payments' = 'details') => {
+    const handleOpenModal = (item: PlannedExpense | null = null, defaultTab: 'details' | 'payments' | 'periods' = 'details') => {
         setEditingItem({ item, defaultTab });
         setIsModalOpen(true);
     };
@@ -459,9 +458,22 @@ export const PlannedExpenses: React.FC = () => {
         const startOfMonth = new Date(year, month, 1);
         const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
 
-        const incomeThisMonth = data.incomes.filter(i => { const d = new Date(i.date); return d >= startOfMonth && d <= endOfMonth; }).reduce((sum, i) => sum + i.amount, 0);
-        const totalPlannedForMonth = data.plannedExpenses.reduce((sum, pe) => { const periodStr = `${year}-${(month + 1).toString().padStart(2, '0')}`; return sum + (generatePeriods(pe).includes(periodStr) ? (pe.periodOverrides?.[periodStr] ?? pe.amountPerPeriod) : 0);}, 0);
-        const paidThisMonth = data.plannedExpenses.reduce((sum, pe) => sum + (pe.payments || []).filter(p => { const d = new Date(p.date); return d >= startOfMonth && d <= endOfMonth; }).reduce((pSum, p) => pSum + p.amount, 0), 0);
+        const incomeThisMonth = data.incomes
+            .filter(i => { const d = new Date(i.date); return d >= startOfMonth && d <= endOfMonth; })
+            .reduce((sum, i) => sum + Number(i.amount), 0);
+
+        const totalPlannedForMonth = data.plannedExpenses
+            .reduce((sum, pe) => { 
+                const periodStr = `${year}-${(month + 1).toString().padStart(2, '0')}`; 
+                const amountForPeriod = generatePeriods(pe).includes(periodStr) ? (pe.periodOverrides?.[periodStr] ?? pe.amountPerPeriod) : 0;
+                return sum + Number(amountForPeriod);
+            }, 0);
+
+        const paidThisMonth = data.plannedExpenses
+            .reduce((sum, pe) => sum + (pe.payments || [])
+            .filter(p => { const d = new Date(p.date); return d >= startOfMonth && d <= endOfMonth; })
+            .reduce((pSum, p) => pSum + Number(p.amount), 0), 0);
+
         const availableBalance = incomeThisMonth - paidThisMonth;
         const budgetUsage = incomeThisMonth > 0 ? (totalPlannedForMonth / incomeThisMonth) * 100 : 0;
         
@@ -479,13 +491,13 @@ export const PlannedExpenses: React.FC = () => {
         data.plannedExpenses.forEach(expense => {
             const paymentsByPeriod = new Map<string, number>();
             (expense.payments || []).forEach(p => {
-                paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + p.amount);
+                paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + Number(p.amount));
             });
 
             const periods = generatePeriods(expense);
             periods.forEach((period, index) => {
                 const paidAmount = paymentsByPeriod.get(period) || 0;
-                const amountForPeriod = expense.periodOverrides?.[period] ?? expense.amountPerPeriod;
+                const amountForPeriod = Number(expense.periodOverrides?.[period] ?? expense.amountPerPeriod);
 
                 if (paidAmount < amountForPeriod) {
                     const [pYear, pMonth] = period.split('-').map(Number);

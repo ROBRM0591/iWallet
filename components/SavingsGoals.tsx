@@ -8,7 +8,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { CsvTools, CsvHeader } from './CsvTools';
 import { generateSequentialId } from './utils';
 
-// FIX: Update GlassCard to forward refs. This is necessary to attach a ref to it for scrolling into view.
 const GlassCard = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(({ children, className = '' }, ref) => (
     <div ref={ref} className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
         {children}
@@ -217,7 +216,7 @@ const SavingsGoalForm: React.FC<{
                 <div>
                     <label className="block text-sm font-medium">Monto Actual</label>
                     <input type="number" name="currentAmount" value={formState.currentAmount || ''} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm" />
-                     {errors.currentAmount && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.currentAmount}</p>}
+                    {errors.currentAmount && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.currentAmount}</p>}
                 </div>
             </div>
             <div>
@@ -227,48 +226,60 @@ const SavingsGoalForm: React.FC<{
             </div>
             <div className="flex justify-end gap-4 pt-4">
                 <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
+                <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Meta</button>
             </div>
         </form>
     );
 };
 
+const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
+
+const SavingsGoalCard: React.FC<{
+    goal: SavingsGoal;
+    onEdit: (goal: SavingsGoal) => void;
+    onDelete: (id: string) => void;
+}> = ({ goal, onEdit, onDelete }) => {
+    const progress = Number(goal.targetAmount) > 0 ? (Number(goal.currentAmount) / Number(goal.targetAmount)) * 100 : 0;
+    const daysLeft = Math.max(0, Math.ceil((new Date(goal.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)));
+    const progressBarColor = progress >= 100 ? 'bg-green-500' : progress > 75 ? 'bg-blue-500' : progress > 40 ? 'bg-yellow-500' : 'bg-red-500';
+
+    return (
+        <GlassCard className="p-6 flex flex-col justify-between">
+            <div>
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                        <IconDisplay icon={goal.icon} iconColor={goal.iconColor} className="w-8 h-8" />
+                        <h3 className="text-xl font-bold">{goal.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => onEdit(goal)} className="p-1 text-primary-500 dark:text-primary-400 hover:text-primary-600 dark:hover:text-primary-300"><EditIcon className="w-5 h-5" /></button>
+                        <button onClick={() => onDelete(goal.id)} className="p-1 text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300"><DeleteIcon className="w-5 h-5" /></button>
+                    </div>
+                </div>
+                <div className="flex justify-between items-end mt-4">
+                    <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Progreso</p>
+                        <p className="text-2xl font-bold">{formatCurrency(goal.currentAmount)} / <span className="text-lg font-medium">{formatCurrency(goal.targetAmount)}</span></p>
+                    </div>
+                    <p className="text-3xl font-bold">{progress.toFixed(0)}%</p>
+                </div>
+                <div className="mt-2 h-4 w-full bg-gray-200 dark:bg-black/30 rounded-full">
+                    <div className={`${progressBarColor} h-4 rounded-full transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
+                </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/20 text-center text-sm text-gray-500 dark:text-gray-400">
+                {progress >= 100 ? "¡Meta Alcanzada! 🎉" : `${daysLeft} días restantes`}
+            </div>
+        </GlassCard>
+    );
+};
 
 export const SavingsGoals: React.FC = () => {
-    const { appData: data, setData } = useAuth();
+    const { appData, setData } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<SavingsGoal | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
-    const location = useLocation();
-    const navigate = useNavigate();
-    const goalRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
-    if (!data) {
-        return <div>Cargando...</div>;
-    }
-
-    useEffect(() => {
-        const goalIdToOpen = location.state?.openGoalId;
-        if (goalIdToOpen && goalRefs.current[goalIdToOpen]) {
-            const element = goalRefs.current[goalIdToOpen];
-            element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            element?.classList.add('ring-2', 'ring-primary-500');
-            setTimeout(() => {
-                element?.classList.remove('ring-2', 'ring-primary-500');
-            }, 2500);
-            // Clear state from location
-            navigate(location.pathname, { state: {}, replace: true });
-        }
-    }, [location.state, navigate]);
-
-    const filteredGoals = useMemo(() => {
-        if (!searchTerm) return data.savingsGoals;
-        return data.savingsGoals.filter(goal => 
-            goal.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [data.savingsGoals, searchTerm]);
 
     const handleOpenModal = (item: SavingsGoal | null = null) => {
         setEditingItem(item);
@@ -281,26 +292,24 @@ export const SavingsGoals: React.FC = () => {
     };
 
     const handleSave = (item: SavingsGoal) => {
-        let newSavingsGoals;
+        let newGoals;
         if (item.id) {
-            newSavingsGoals = data.savingsGoals.map(sg => sg.id === item.id ? item : sg);
+            newGoals = appData!.savingsGoals.map(g => g.id === item.id ? item : g);
         } else {
-            newSavingsGoals = [...data.savingsGoals, { ...item, id: generateSequentialId('MA', data.savingsGoals) }];
+            newGoals = [...appData!.savingsGoals, { ...item, id: generateSequentialId('MA', appData!.savingsGoals) }];
         }
-        setData({ ...data, savingsGoals: newSavingsGoals });
+        setData({ ...appData!, savingsGoals: newGoals });
         handleCloseModal();
     };
 
-    const handleDelete = (id: string) => {
-        setDeleteId(id);
-    };
-    
+    const handleDelete = (id: string) => setDeleteId(id);
+
     const confirmDelete = () => {
         if (!deleteId) return;
-        setData({ ...data, savingsGoals: data.savingsGoals.filter(sg => sg.id !== deleteId) });
+        setData({ ...appData!, savingsGoals: appData!.savingsGoals.filter(g => g.id !== deleteId) });
         setDeleteId(null);
     };
-    
+
     const handleImport = (importedData: any[]) => {
         if (Array.isArray(importedData)) {
             const typedData = importedData.map(d => ({
@@ -308,120 +317,62 @@ export const SavingsGoals: React.FC = () => {
                 targetAmount: Number(d.targetAmount),
                 currentAmount: Number(d.currentAmount),
             })) as SavingsGoal[];
-            setData({ ...data, savingsGoals: typedData });
-             setSuccessInfo({
-                title: 'Importación Exitosa',
-                message: `${typedData.length} metas de ahorro importadas con éxito.`
-            });
+            setData({ ...appData!, savingsGoals: typedData });
+            setSuccessInfo({ title: 'Importación Exitosa', message: `${typedData.length} metas importadas.` });
         } else {
-             alert('Error: El archivo CSV no tiene el formato correcto para metas de ahorro.');
+            alert('Error: El archivo CSV no tiene el formato correcto.');
         }
     };
     
-    const headers: CsvHeader<SavingsGoal>[] = [
+    const csvHeaders: CsvHeader<SavingsGoal>[] = [
         { key: 'id', label: 'ID' },
         { key: 'name', label: 'Nombre' },
-        { key: 'icon', label: 'Icono' },
-        { key: 'iconColor', label: 'Icono Color' },
         { key: 'targetAmount', label: 'Monto Objetivo' },
         { key: 'currentAmount', label: 'Monto Actual' },
-        { key: 'deadline', label: 'Fecha Límite (ISO)' },
+        { key: 'deadline', label: 'Fecha Límite' },
+        { key: 'icon', label: 'Icono' },
+        { key: 'iconColor', label: 'Color Icono' },
     ];
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
-    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (!appData) return null;
 
     return (
-        <GlassCard className="p-6">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+        <div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h1 className="text-3xl font-bold">Metas de Ahorro</h1>
-                <div className="w-full md:w-auto flex items-center gap-4 flex-wrap">
-                     <input 
-                        type="text"
-                        placeholder="Buscar por nombre..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full sm:w-auto flex-grow px-3 py-2 rounded-md shadow-sm"
-                    />
-                     <CsvTools
-                        entityName="Metas de Ahorro"
-                        items={data.savingsGoals}
-                        headers={headers}
+                <div className="flex items-center gap-2">
+                    <CsvTools 
+                        entityName="Metas de Ahorro" 
+                        items={appData.savingsGoals} 
+                        headers={csvHeaders} 
                         onImport={handleImport}
-                        onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus metas de ahorro han sido exportadas a un archivo CSV.' })}
+                        onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus metas de ahorro han sido exportadas.' })}
                     />
-                    <button onClick={() => handleOpenModal()} className="flex-shrink-0 flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">
+                    <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg transition">
                         <PlusIcon className="w-5 h-5" />
-                        Añadir Meta
+                        Nueva Meta
                     </button>
                 </div>
             </div>
 
-            <div className="space-y-6">
-                {filteredGoals.map(goal => {
-                    const progress = (goal.currentAmount / goal.targetAmount) * 100;
-                    return (
-                        <GlassCard 
-                            key={goal.id} 
-                            ref={el => { if (el) goalRefs.current[goal.id] = el; }}
-                            className="p-4 transition-all duration-300"
-                        >
-                             <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-4">
-                                    <IconDisplay icon={goal.icon} iconColor={goal.iconColor} className="w-10 h-10 flex-shrink-0"/>
-                                    <div>
-                                        <h3 className="font-bold text-lg">
-                                            <button onClick={() => handleOpenModal(goal)} className="text-left hover:text-primary-500 dark:hover:text-primary-400 hover:underline">
-                                                {goal.name}
-                                            </button>
-                                        </h3>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">Objetivo: {formatDate(goal.deadline)}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center">
-                                    <button onClick={() => handleOpenModal(goal)} className="text-primary-500 dark:text-primary-400 p-1"><EditIcon className="w-5 h-5"/></button>
-                                    <button onClick={() => handleDelete(goal.id)} className="text-red-500 dark:text-red-400 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
-                                </div>
-                            </div>
-                            <div className="mt-2">
-                                <div className="flex justify-between mb-1">
-                                    <span className="font-semibold text-gray-800 dark:text-gray-300">{formatCurrency(goal.currentAmount)}</span>
-                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{formatCurrency(goal.targetAmount)}</span>
-                                </div>
-                                <div className="w-full bg-gray-200 dark:bg-black/20 rounded-full h-4">
-                                    <div
-                                        className="bg-primary-500 h-4 rounded-full text-center text-white text-xs flex items-center justify-center"
-                                        style={{ width: `${Math.min(progress, 100)}%` }}
-                                    >
-                                      {progress >= 10 && `${Math.round(progress)}%`}
-                                    </div>
-                                </div>
-                            </div>
-                        </GlassCard>
-                    );
-                })}
-            </div>
+            {appData.savingsGoals.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {appData.savingsGoals.map(goal => (
+                        <SavingsGoalCard key={goal.id} goal={goal} onEdit={handleOpenModal} onDelete={handleDelete} />
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-12">
+                    <p className="text-lg text-gray-500 dark:text-gray-400">Aún no tienes metas de ahorro.</p>
+                    <p className="text-gray-400 dark:text-gray-500">¡Crea una para empezar a ahorrar para tus sueños!</p>
+                </div>
+            )}
 
-            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingItem ? 'Editar Meta de Ahorro' : 'Añadir Meta de Ahorro'}>
-                <SavingsGoalForm
-                    item={editingItem}
-                    onSave={handleSave}
-                    onCancel={handleCloseModal}
-                />
+            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingItem ? 'Editar Meta de Ahorro' : 'Nueva Meta de Ahorro'}>
+                <SavingsGoalForm item={editingItem} onSave={handleSave} onCancel={handleCloseModal} />
             </Modal>
-            <ConfirmationModal
-                isOpen={!!deleteId}
-                onClose={() => setDeleteId(null)}
-                onConfirm={confirmDelete}
-                title="Confirmar Eliminación"
-                message="¿Estás seguro de que quieres eliminar esta meta de ahorro?"
-            />
-            <SuccessToast 
-                isOpen={!!successInfo}
-                onClose={() => setSuccessInfo(null)}
-                title={successInfo?.title || ''}
-                message={successInfo?.message || ''}
-            />
+            <ConfirmationModal isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={confirmDelete} title="Eliminar Meta" message="¿Estás seguro de que quieres eliminar esta meta de ahorro?" />
+            <SuccessToast isOpen={!!successInfo} onClose={() => setSuccessInfo(null)} title={successInfo?.title || ''} message={successInfo?.message || ''} />
         </div>
     );
 };
