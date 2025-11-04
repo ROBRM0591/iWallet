@@ -17,12 +17,16 @@ export enum Priority {
 export interface MovementType {
     id: string;
     name: MovementTypeName;
+    icon?: string;
+    iconColor?: string;
 }
 
 export interface CostType {
     id: string;
     name: string;
     movementTypeId: string;
+    icon?: string;
+    iconColor?: string;
 }
 
 export interface Category {
@@ -83,6 +87,7 @@ export interface Income {
     date: string; // ISO 8601 format
     amount: number;
     description: string;
+    conceptId?: string;
     notes?: string;
 }
 

@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { AppData, DailyExpense, Income, MovementTypeName, Payment } from '../types';
+import { AppData, DailyExpense, Income, MovementTypeName, Payment, Concept } from '../types';
 import { COLOR_PALETTES } from '../constants';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { getNextPeriodToPay, generateSequentialId, toDateKey } from './utils';
-import { PlusIcon, CloseIcon } from './Icons';
+import { PlusIcon, CloseIcon, ChatBubbleLeftRightIcon, SparklesIcon } from './Icons';
+import { ICON_SVGS } from '../utils/icon-svgs';
+import { ChatHistory as AIAssistantWidget } from './ChatHistory';
+import { Modal } from './common/Portals';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -21,31 +24,6 @@ const months = [
     { value: '10', label: 'Octubre' }, { value: '11', label: 'Noviembre' }, { value: '12', label: 'Diciembre' }
 ];
 
-const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        if (isOpen) document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-slate-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
-                    <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                        <CloseIcon className="w-6 h-6" />
-                    </button>
-                </div>
-                <div className="p-6 max-h-[70vh] overflow-y-auto">{children}</div>
-            </div>
-        </div>
-    );
-};
-
 interface QuickAddModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -58,38 +36,34 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
     
     const todayISO = toDateKey(new Date());
     const [expenseState, setExpenseState] = useState({ conceptId: '', amount: 0, date: todayISO });
-    const [incomeState, setIncomeState] = useState({
-        periodType: '1ra Quincena',
-        month: (new Date().getMonth() + 1).toString().padStart(2, '0'),
-        year: new Date().getFullYear().toString(),
-        amount: 0,
-        date: todayISO,
-        description: '',
-    });
+    const [incomeState, setIncomeState] = useState({ conceptId: '', amount: 0, date: todayISO });
     const [paymentState, setPaymentState] = useState({ expenseId: '', amount: 0, date: todayISO, period: '', remaining: 0 });
     const [errors, setErrors] = useState<Record<string, string>>({});
     
-    const movGastoId = useMemo(() => data.movementTypes.find(m => m.name === MovementTypeName.GASTO)?.id, [data.movementTypes]);
-    const variableCostTypeIdForDaily = useMemo(() => data.costTypes.find(ct => ct.name === 'Variable')?.id, [data.costTypes]);
-    const expenseConcepts = useMemo(() => data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === variableCostTypeIdForDaily), [data.concepts, movGastoId, variableCostTypeIdForDaily]);
+    const expenseConcepts = useMemo(() => {
+        const movGastoId = 'TM-001'; // Canonical ID for GASTO
+        const variableCostTypeId = 'TC-002'; // Canonical ID for Variable
+        if (!data.movementTypes.some(m => m.id === movGastoId) || !data.costTypes.some(ct => ct.id === variableCostTypeId)) return [];
+        return data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === variableCostTypeId);
+    }, [data]);
+
+    const incomeConcepts = useMemo(() => {
+        const movIngresoId = 'TM-002'; // Canonical ID for INGRESO
+        if (!data.movementTypes.some(m => m.id === movIngresoId)) return [];
+        return data.concepts.filter(c => c.movementTypeId === movIngresoId);
+    }, [data]);
     
-    const fijoCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Fijo')?.id, [data.costTypes]);
-    const variableCostTypeId = useMemo(() => data.costTypes.find(ct => ct.name === 'Variable')?.id, [data.costTypes]);
     const pendingPlannedExpenses = useMemo(() => {
+        const fijoCostTypeId = 'TC-001'; // Canonical ID for Fijo
+        if (!data.costTypes.some(ct => ct.id === fijoCostTypeId)) return [];
         return data.plannedExpenses.filter(pe => {
             const concept = data.concepts.find(c => c.id === pe.conceptId);
             if (!concept) return false;
-            const isPlannedType = concept.costTypeId === fijoCostTypeId || concept.costTypeId === variableCostTypeId;
+            const isPlannedType = concept.costTypeId === fijoCostTypeId;
             return getNextPeriodToPay(pe) !== null && isPlannedType;
         });
-    }, [data.plannedExpenses, data.concepts, fijoCostTypeId, variableCostTypeId]);
+    }, [data]);
 
-    useEffect(() => {
-        const { periodType, month, year } = incomeState;
-        const monthLabel = months.find(m => m.value === month)?.label || '';
-        setIncomeState(s => ({...s, description: `Nómina ${periodType} ${monthLabel} ${year}`}));
-    }, [incomeState.periodType, incomeState.month, incomeState.year]);
-    
     useEffect(() => {
         if (paymentState.expenseId) {
             const expense = data.plannedExpenses.find(pe => pe.id === paymentState.expenseId);
@@ -97,7 +71,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
 
             const nextPeriod = getNextPeriodToPay(expense);
             if (nextPeriod) {
-                const paidInPeriod = expense.payments
+                const paidInPeriod = (expense.payments || [])
                     .filter(p => p.period === nextPeriod.period)
                     .reduce((sum, p) => sum + Number(p.amount), 0);
                 const amountForPeriod = expense.periodOverrides?.[nextPeriod.period] ?? expense.amountPerPeriod;
@@ -135,7 +109,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
     const handleIncomeSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const newErrors: Record<string, string> = {};
-        if (!incomeState.description.trim()) newErrors.description = 'La descripción es requerida.';
+        if (!incomeState.conceptId) newErrors.conceptId = 'El concepto es requerido.';
         if (incomeState.amount <= 0) newErrors.amount = 'El monto debe ser mayor a 0.';
         if (!incomeState.date) newErrors.date = 'La fecha es requerida.';
         if (Object.keys(newErrors).length > 0) {
@@ -143,14 +117,16 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
             return;
         }
 
+        const conceptName = incomeConcepts.find(c => c.id === incomeState.conceptId)?.name || 'Ingreso';
+
         const newIncome: Income = {
             id: generateSequentialId('IN', data.incomes),
-            description: incomeState.description,
+            description: conceptName,
             amount: incomeState.amount,
             date: new Date(`${incomeState.date}T00:00:00`).toISOString()
         };
         setData({ ...data, incomes: [...data.incomes, newIncome] });
-        setIncomeState({ periodType: '1ra Quincena', month: (new Date().getMonth() + 1).toString().padStart(2, '0'), year: new Date().getFullYear().toString(), amount: 0, date: todayISO, description: '' });
+        setIncomeState({ conceptId: '', amount: 0, date: todayISO });
         setErrors({});
         onClose();
     };
@@ -169,7 +145,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
             return;
         }
 
-        const allPayments = data.plannedExpenses.flatMap(pe => pe.payments);
+        const allPayments = data.plannedExpenses.flatMap(pe => pe.payments || []);
         const newPayment: Payment = {
             id: generateSequentialId('PA', allPayments),
             amount,
@@ -180,7 +156,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
         setData({
             ...data,
             plannedExpenses: data.plannedExpenses.map(pe => 
-                pe.id === expenseId ? { ...pe, payments: [...pe.payments, newPayment] } : pe
+                pe.id === expenseId ? { ...pe, payments: [...(pe.payments || []), newPayment] } : pe
             ),
         });
         
@@ -191,7 +167,7 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
 
     const resetForms = () => {
         setExpenseState({ conceptId: '', amount: 0, date: todayISO });
-        setIncomeState({ periodType: '1ra Quincena', month: (new Date().getMonth() + 1).toString().padStart(2, '0'), year: new Date().getFullYear().toString(), amount: 0, date: todayISO, description: '' });
+        setIncomeState({ conceptId: '', amount: 0, date: todayISO });
         setPaymentState({ expenseId: '', amount: 0, date: todayISO, period: '', remaining: 0 });
         setErrors({});
     };
@@ -220,199 +196,211 @@ const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, data, se
                 <form onSubmit={handleExpenseSubmit} className="space-y-4 mt-4">
                      <div>
                         <label className="block text-sm font-medium">Concepto (Gasto Diario)</label>
-                        <select value={expenseState.conceptId} onChange={e => setExpenseState(s => ({...s, conceptId: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm">
-                            <option value="">Seleccione un concepto</option>
+                        <select value={expenseState.conceptId} onChange={e => setExpenseState(s => ({...s, conceptId: e.target.value}))} className="mt-1 block w-full px-4 py-2 rounded-md">
+                            <option value="">Seleccione...</option>
                             {expenseConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
-                        {errors.conceptId && <p className="text-red-400 text-xs mt-1">{errors.conceptId}</p>}
+                        {errors.conceptId && <p className="text-red-500 text-xs mt-1">{errors.conceptId}</p>}
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium">Monto</label>
-                        <input type="number" step="0.01" value={expenseState.amount || ''} onChange={e => setExpenseState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md shadow-sm" />
-                        {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount}</p>}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium">Monto</label>
+                            <input type="number" value={expenseState.amount || ''} onChange={e => setExpenseState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md" />
+                             {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium">Fecha</label>
+                            <input type="date" value={expenseState.date} onChange={e => setExpenseState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md" />
+                            {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium">Fecha</label>
-                        <input type="date" value={expenseState.date} onChange={e => setExpenseState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm" />
-                        {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
-                    </div>
-                    <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                        <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Gasto</button>
-                    </div>
+                    <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Registrar Gasto</button>
                 </form>
             ) : activeTab === 'payment' ? (
                  <form onSubmit={handlePaymentSubmit} className="space-y-4 mt-4">
-                     <div>
-                        <label className="block text-sm font-medium">Gasto Planificado (Fijo/Variable)</label>
-                        <select value={paymentState.expenseId} onChange={e => setPaymentState(s => ({...s, expenseId: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm">
-                            <option value="">Seleccione un gasto</option>
+                    <div>
+                        <label className="block text-sm font-medium">Gasto Planificado</label>
+                        <select value={paymentState.expenseId} onChange={e => setPaymentState(s => ({...s, expenseId: e.target.value}))} className="mt-1 block w-full rounded-md">
+                            <option value="">Seleccione un gasto...</option>
                             {pendingPlannedExpenses.map(pe => <option key={pe.id} value={pe.id}>{data.concepts.find(c => c.id === pe.conceptId)?.name}</option>)}
                         </select>
-                         {paymentState.period && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Abono para el periodo {months.find(m => m.value === paymentState.period.split('-')[1])?.label}. Restante: {formatCurrency(paymentState.remaining)}</p>}
-                         {errors.expenseId && <p className="text-red-400 text-xs mt-1">{errors.expenseId}</p>}
+                         {errors.expenseId && <p className="text-red-500 text-xs mt-1">{errors.expenseId}</p>}
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium">Monto del Abono</label>
-                        <input type="number" step="0.01" value={paymentState.amount || ''} onChange={e => setPaymentState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md shadow-sm" disabled={!paymentState.expenseId} />
-                        {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount}</p>}
+                     {paymentState.expenseId && (
+                        <div className="p-2 bg-gray-100 dark:bg-black/20 rounded-md text-sm">
+                            <p><strong>Periodo a Pagar:</strong> {paymentState.period}</p>
+                            <p><strong>Monto Restante:</strong> {formatCurrency(paymentState.remaining)}</p>
+                        </div>
+                    )}
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium">Monto a Pagar</label>
+                            <input type="number" value={paymentState.amount || ''} onChange={e => setPaymentState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md" />
+                            {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium">Fecha de Pago</label>
+                            <input type="date" value={paymentState.date} onChange={e => setPaymentState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md" />
+                            {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium">Fecha del Abono</label>
-                        <input type="date" value={paymentState.date} onChange={e => setPaymentState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm" />
-                        {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
-                    </div>
-                    <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                        <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Abono</button>
-                    </div>
+                     <button type="submit" disabled={!paymentState.expenseId} className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400">Registrar Abono</button>
                 </form>
             ) : (
                 <form onSubmit={handleIncomeSubmit} className="space-y-4 mt-4">
-                     <div>
-                        <label className="block text-sm font-medium">Periodo</label>
-                        <div className="flex gap-2 mt-1">
-                             <select value={incomeState.periodType} onChange={e => setIncomeState(s => ({...s, periodType: e.target.value}))} className="block w-full rounded-md shadow-sm">
-                                <option>1ra Quincena</option>
-                                <option>2da Quincena</option>
-                            </select>
-                            <select value={incomeState.month} onChange={e => setIncomeState(s => ({...s, month: e.target.value}))} className="block w-full rounded-md shadow-sm">
-                                {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                            </select>
-                            <select value={incomeState.year} onChange={e => setIncomeState(s => ({...s, year: e.target.value}))} className="block w-full rounded-md shadow-sm">
-                                {years.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
+                    <div>
+                        <label className="block text-sm font-medium">Concepto</label>
+                        <select value={incomeState.conceptId} onChange={e => setIncomeState(s => ({...s, conceptId: e.target.value}))} className="mt-1 block w-full rounded-md">
+                            <option value="">Seleccione un concepto</option>
+                            {incomeConcepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        {errors.conceptId && <p className="text-red-500 text-xs mt-1">{errors.conceptId}</p>}
+                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium">Monto</label>
+                            <input type="number" value={incomeState.amount || ''} onChange={e => setIncomeState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md" />
+                             {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium">Fecha</label>
+                            <input type="date" value={incomeState.date} onChange={e => setIncomeState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md" />
+                            {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
                         </div>
                     </div>
-                     <div>
-                        <label className="block text-sm font-medium">Descripción</label>
-                        <input type="text" value={incomeState.description} onChange={e => setIncomeState(s => ({...s, description: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm" />
-                        {errors.description && <p className="text-red-400 text-xs mt-1">{errors.description}</p>}
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium">Monto</label>
-                        <input type="number" step="0.01" value={incomeState.amount || ''} onChange={e => setIncomeState(s => ({...s, amount: parseFloat(e.target.value)}))} className="mt-1 block w-full rounded-md shadow-sm" />
-                        {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount}</p>}
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium">Fecha de Registro</label>
-                        <input type="date" value={incomeState.date} onChange={e => setIncomeState(s => ({...s, date: e.target.value}))} className="mt-1 block w-full rounded-md shadow-sm" />
-                        {errors.date && <p className="text-red-400 text-xs mt-1">{errors.date}</p>}
-                    </div>
-                    <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                        <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar Ingreso</button>
-                    </div>
+                    <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Registrar Ingreso</button>
                 </form>
             )}
         </Modal>
     );
 };
 
+
+// Main Layout Component
 export const MainLayout: React.FC = () => {
     const { appData, setData } = useAuth();
     const [theme, setTheme] = useLocalStorage<Theme>('iwallet-theme', 'system');
-    const [palette, setPaletteState] = useLocalStorage('iwallet-palette', COLOR_PALETTES[2]);
-    const [appIcon, setAppIcon] = useLocalStorage('iwallet-app-icon', 'wallet');
+    const [palette, setPalette] = useLocalStorage('iwallet-palette', COLOR_PALETTES[2]);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [isQuickAddModalOpen, setQuickAddModalOpen] = useState(false);
+    const [appIcon, setAppIcon] = useLocalStorage('iwallet-app-icon', 'wallet');
+    const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+    const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
     const [installPrompt, setInstallPrompt] = useState<any>(null);
     const [isInstalled, setIsInstalled] = useState(false);
+    const [isFabMenuOpen, setFabMenuOpen] = useState(false);
+    const fabRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const checkInstalled = () => {
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-            setIsInstalled(isPWA);
+        const handleClickOutside = (event: MouseEvent) => {
+            if (fabRef.current && !fabRef.current.contains(event.target as Node)) {
+                setFabMenuOpen(false);
+            }
         };
-        checkInstalled();
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setFabMenuOpen(false);
+            }
+        };
 
-        const handleBeforeInstallPrompt = (e: Event) => {
+        if (isFabMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isFabMenuOpen]);
+
+
+     useEffect(() => {
+        const handler = (e: Event) => {
             e.preventDefault();
             setInstallPrompt(e);
-            checkInstalled();
         };
-        const handleAppInstalled = () => {
-            setInstallPrompt(null);
+        window.addEventListener('beforeinstallprompt', handler);
+
+        window.addEventListener('appinstalled', () => {
             setIsInstalled(true);
-        };
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        window.addEventListener('appinstalled', handleAppInstalled);
-        return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-            window.removeEventListener('appinstalled', handleAppInstalled);
-        };
+        });
+
+        // Check if the app is already installed
+        if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+            setIsInstalled(true);
+        }
+
+        return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
-
-    const handleInstallClick = async () => {
-        if (!installPrompt) return;
-        installPrompt.prompt();
-        const { outcome } = await installPrompt.userChoice;
-        if (outcome === 'accepted') {
-            console.log('User accepted the A2HS prompt');
-        } else {
-            console.log('User dismissed the A2HS prompt');
+    const handleInstallClick = () => {
+        if (installPrompt) {
+            installPrompt.prompt();
+            installPrompt.userChoice.then((choiceResult: any) => {
+                if (choiceResult.outcome === 'accepted') {
+                    setIsInstalled(true);
+                }
+                setInstallPrompt(null);
+            });
         }
-        setInstallPrompt(null);
     };
+    
+    // Favicon update logic
+    useEffect(() => {
+        const link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+        if (link) {
+            const svgData = ICON_SVGS[appIcon] || ICON_SVGS['wallet'];
+            link.href = `data:image/svg+xml,${encodeURIComponent(svgData.replace('{{color}}', palette.hex))}`;
+        }
+    }, [appIcon, palette]);
+
+    // Theme and Palette application logic
+    useEffect(() => {
+        const root = window.document.documentElement;
+        
+        // Apply theme
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (theme === 'dark' || (theme === 'system' && systemPrefersDark)) {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+
+        // Apply palette
+        Object.entries(palette.shades).forEach(([shade, color]) => {
+            root.style.setProperty(`--color-primary-${shade}`, color);
+        });
+        root.style.setProperty('--color-primary', palette.hex);
+        
+    }, [theme, palette]);
 
     const refreshData = useCallback(() => {
         setIsRefreshing(true);
-        setTimeout(() => {
-            const item = window.localStorage.getItem('iwallet-data');
-            if (item) {
-                const session = JSON.parse(item);
-                setData(session);
-            }
-            setIsRefreshing(false);
-        }, 1000);
+        const storedData = localStorage.getItem('appData');
+        if (storedData) {
+            setData(JSON.parse(storedData));
+        }
+        setTimeout(() => setIsRefreshing(false), 500);
     }, [setData]);
 
-    useEffect(() => {
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        
-        const applyTheme = () => {
-            if (theme === 'system') {
-                document.documentElement.classList.toggle('dark', mediaQuery.matches);
-            } else {
-                document.documentElement.classList.toggle('dark', theme === 'dark');
-            }
-        };
+    const openAIAssistant = () => {
+        setIsAIAssistantOpen(true);
+        setIsQuickAddOpen(false);
+        setFabMenuOpen(false);
+    };
 
-        const handleChange = () => {
-            if (theme === 'system') {
-                applyTheme();
-            }
-        };
+    const openQuickAdd = () => {
+        setIsAIAssistantOpen(false);
+        setIsQuickAddOpen(true);
+        setFabMenuOpen(false);
+    };
 
-        mediaQuery.addEventListener('change', handleChange);
-        applyTheme();
-
-        return () => mediaQuery.removeEventListener('change', handleChange);
-    }, [theme]);
-    
-    useEffect(() => {
-        const intervalId = setInterval(refreshData, 60000);
-        return () => clearInterval(intervalId);
-    }, [refreshData]);
-
-    const setPalette = useCallback((p: typeof COLOR_PALETTES[0]) => {
-        setPaletteState(p);
-        const root = document.documentElement;
-        Object.entries(p.shades).forEach(([key, value]) => root.style.setProperty(`--color-primary-${key}`, value));
-        root.style.setProperty('--color-primary', p.hex);
-    }, [setPaletteState]);
-
-    useEffect(() => {
-        setPalette(palette);
-    }, [palette, setPalette]);
-
-    if (!appData) {
-        return <div>Cargando...</div>; 
-    }
+    const toggleFabMenu = () => {
+        setFabMenuOpen(prev => !prev);
+    };
 
     return (
-        <div className="min-h-screen">
+        <div className="bg-slate-100 dark:bg-slate-900 min-h-screen text-gray-800 dark:text-gray-200 font-sans transition-colors duration-300">
             <Header
                 theme={theme}
                 setTheme={setTheme}
@@ -424,21 +412,54 @@ export const MainLayout: React.FC = () => {
             <main className="container mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 md:pb-8">
                 <Outlet context={{ appIcon, setAppIcon, theme, setTheme, setPalette, installPrompt, handleInstallClick, isInstalled }} />
             </main>
-
-            <button
-                onClick={() => setQuickAddModalOpen(true)}
-                className="fixed bottom-20 md:bottom-8 right-4 sm:right-6 lg:right-8 bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg z-40 transition-transform hover:scale-110"
-                aria-label="Añadir registro rápido"
-            >
-                <PlusIcon className="w-8 h-8" />
-            </button>
-            <QuickAddModal 
-                isOpen={isQuickAddModalOpen}
-                onClose={() => setQuickAddModalOpen(false)}
-                data={appData}
-                setData={setData}
-            />
             <BottomNav />
+            {appData && (
+                <QuickAddModal 
+                    isOpen={isQuickAddOpen}
+                    onClose={() => setIsQuickAddOpen(false)}
+                    data={appData}
+                    setData={setData}
+                />
+            )}
+            <AIAssistantWidget isOpen={isAIAssistantOpen} />
+            { isAIAssistantOpen &&
+                <button onClick={() => setIsAIAssistantOpen(false)} className="fixed inset-0 bg-transparent z-30" aria-label="Cerrar asistente AI"></button>
+            }
+
+            <div ref={fabRef} className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-4">
+                {isFabMenuOpen && (
+                    <div className="flex flex-col items-end gap-4 animate-fadeInUp" style={{animationDuration: '200ms'}}>
+                        <div className="flex items-center gap-3">
+                            <span className="bg-slate-900/80 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">Asistente AI</span>
+                            <button
+                                onClick={openAIAssistant}
+                                className="bg-purple-600 hover:bg-purple-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110"
+                                aria-label="Abrir Asistente AI"
+                            >
+                                <SparklesIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                             <span className="bg-slate-900/80 text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">Registro Rápido</span>
+                            <button
+                                onClick={openQuickAdd}
+                                className="bg-primary-600 hover:bg-primary-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110"
+                                aria-label="Registro Rápido"
+                            >
+                                <PlusIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                <button
+                    onClick={toggleFabMenu}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-transform hover:scale-110"
+                    aria-label={isFabMenuOpen ? "Cerrar menú rápido" : "Abrir menú rápido"}
+                >
+                    {isFabMenuOpen ? <CloseIcon className="w-6 h-6" /> : <SparklesIcon className="w-6 h-6" />}
+                </button>
+            </div>
         </div>
     );
 };

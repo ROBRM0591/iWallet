@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { WarningIcon } from './Icons';
+import React, { useState, useRef, useEffect } from 'react';
+import { WarningIcon, ChevronDownIcon } from './Icons';
+import { ConfirmationModal } from './common/Portals';
 
 declare const XLSX: any;
 
@@ -8,47 +9,6 @@ export interface CsvHeader<T> {
     label: string;
     formatter?: (value: any) => string;
 }
-
-const ConfirmationModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onConfirm: () => void;
-    entityName: string;
-}> = ({ isOpen, onClose, onConfirm, entityName }) => {
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 dark:bg-yellow-900/50">
-                    <WarningIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-300" />
-                </div>
-                <h3 className="text-lg leading-6 font-bold text-gray-900 dark:text-white mt-4">Confirmar Importación</h3>
-                <div className="mt-2">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                       ¿Estás seguro de que quieres importar este archivo? Esta acción reemplazará todos los {entityName.toLowerCase()} existentes.
-                    </p>
-                </div>
-                <div className="mt-6 flex justify-center gap-4">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-4 rounded-lg transition"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg transition"
-                    >
-                        Sí, Reemplazar
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 interface CsvToolsProps<T> {
     entityName: string;
@@ -62,22 +22,34 @@ export function CsvTools<T>({ entityName, items, headers, onImport, onExportSucc
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isConfirming, setIsConfirming] = useState(false);
     const [importedData, setImportedData] = useState<T[] | null>(null);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [menuRef]);
 
     const handleExport = () => {
         try {
-            const dataForSheet = items.map(item => {
-                const row: { [key: string]: any } = {};
-                headers.forEach(header => {
+            const headerRow = headers.map(h => h.label);
+            const dataRows = items.map(item =>
+                headers.map(header => {
                     const value = item[header.key];
-                    row[header.label] = header.formatter ? header.formatter(value) : value;
-                });
-                return row;
-            });
-
-            const ws = XLSX.utils.json_to_sheet(dataForSheet);
+                    return header.formatter ? header.formatter(value) : value;
+                })
+            );
+            
+            const sheetData = [headerRow, ...dataRows];
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, entityName.substring(0, 31));
-            XLSX.writeFile(wb, `${entityName.toLowerCase().replace(/ /g, '_')}.xlsx`);
+            XLSX.writeFile(wb, `${entityName.toLowerCase().replace(/\s/g, '_')}.xlsx`);
 
             if (onExportSuccess) {
                 onExportSuccess();
@@ -87,6 +59,7 @@ export function CsvTools<T>({ entityName, items, headers, onImport, onExportSucc
             alert("Ocurrió un error al exportar el archivo XLSX.");
         }
     };
+
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -148,7 +121,7 @@ export function CsvTools<T>({ entityName, items, headers, onImport, onExportSucc
     };
 
     return (
-        <div className="flex items-center gap-2">
+        <div className="relative inline-block text-left" ref={menuRef}>
             <input
                 type="file"
                 ref={fileInputRef}
@@ -156,23 +129,43 @@ export function CsvTools<T>({ entityName, items, headers, onImport, onExportSucc
                 className="hidden"
                 accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
             />
-            <button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-3 rounded-lg text-sm"
-            >
-                Importar XLSX
-            </button>
-             <button
-                onClick={handleExport}
-                className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-3 rounded-lg text-sm"
-            >
-                Exportar XLSX
-            </button>
+            
+            <div>
+                <button 
+                    type="button" 
+                    onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                    className="flex items-center gap-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-3 rounded-lg text-sm"
+                >
+                    Opciones
+                    <ChevronDownIcon className={`w-4 h-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+            </div>
+
+            {isMenuOpen && (
+                <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                    <div className="py-1" role="menu" aria-orientation="vertical">
+                        <button
+                            onClick={() => { fileInputRef.current?.click(); setIsMenuOpen(false); }}
+                            className="w-full text-left text-gray-700 dark:text-gray-200 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
+                        >
+                            Importar .XLSX
+                        </button>
+                        <button
+                            onClick={() => { handleExport(); setIsMenuOpen(false); }}
+                            className="w-full text-left text-gray-700 dark:text-gray-200 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
+                        >
+                            Exportar .XLSX
+                        </button>
+                    </div>
+                </div>
+            )}
+            
             <ConfirmationModal 
                 isOpen={isConfirming}
                 onClose={() => setIsConfirming(false)}
                 onConfirm={confirmImport}
-                entityName={entityName}
+                title={`Importar ${entityName}`}
+                message={`¿Estás seguro? Esta acción reemplazará todos los ${entityName.toLowerCase()} existentes.`}
             />
         </div>
     );

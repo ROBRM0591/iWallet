@@ -4,8 +4,8 @@ import { AppData, DailyExpense, Income } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line } from 'recharts';
 import { DeleteIcon, WarningIcon, CheckCircleIcon, SparklesIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
-import { CsvTools, CsvHeader } from './CsvTools';
 import { GoogleGenAI } from '@google/genai';
+import { IconDisplay } from './IconDisplay';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000) {
@@ -25,7 +25,7 @@ const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
+    <div className={`bg-white/80 dark:bg-slate-800/60 backdrop-blur-2xl rounded-2xl border border-white/30 dark:border-slate-700/80 shadow-2xl text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
@@ -142,6 +142,8 @@ interface Transaction {
     concept: string;
     category: string;
     amount: number;
+    icon?: string;
+    iconColor?: string;
 }
 
 const TransactionList: React.FC<{
@@ -170,7 +172,12 @@ const TransactionList: React.FC<{
                             transactions.map(t => (
                                 <tr key={`${t.source}-${t.id}`} className="border-b border-gray-200 dark:border-white/10 hover:bg-gray-100/50 dark:hover:bg-white/10">
                                     <td className="p-3 text-sm whitespace-nowrap">{new Date(t.date).toLocaleDateString('es-MX')}</td>
-                                    <td className="p-3 font-medium">{t.concept}</td>
+                                    <td className="p-3 font-medium">
+                                        <div className="flex items-center gap-2">
+                                            <IconDisplay icon={t.icon} iconColor={t.iconColor} className="w-5 h-5" />
+                                            <span>{t.concept}</span>
+                                        </div>
+                                    </td>
                                     <td className="p-3 text-sm">{t.category}</td>
                                     <td className="p-3 text-sm">{t.type}</td>
                                     <td className={`p-3 text-right font-semibold ${t.source === 'income' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{formatFullCurrency(t.amount)}</td>
@@ -208,6 +215,10 @@ export const Reports: React.FC = () => {
 
     const [insight, setInsight] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [optimizationInsight, setOptimizationInsight] = useState('');
+    const [isGeneratingOptimization, setIsGeneratingOptimization] = useState(false);
+    const [forecastInsight, setForecastInsight] = useState('');
+    const [isGeneratingForecast, setIsGeneratingForecast] = useState(false);
 
     useEffect(() => {
         const observer = new MutationObserver(() => {
@@ -245,7 +256,19 @@ export const Reports: React.FC = () => {
         data.incomes.forEach(income => {
             const incomeDate = new Date(income.date);
             if (incomeDate >= start && incomeDate <= end) {
-                allTransactions.push({ id: income.id, source: 'income', type: 'Ingreso', date: income.date, concept: income.description, category: 'N/A', amount: income.amount });
+                const concept = data.concepts.find(c => c.id === income.conceptId);
+                const category = data.categories.find(cat => cat.id === concept?.categoryId)?.name || 'Sin Categoría';
+                allTransactions.push({ 
+                    id: income.id, 
+                    source: 'income', 
+                    type: 'Ingreso', 
+                    date: income.date, 
+                    concept: concept?.name || income.description, 
+                    category: category, 
+                    amount: income.amount, 
+                    icon: concept?.icon, 
+                    iconColor: concept?.iconColor 
+                });
             }
         });
         data.dailyExpenses.forEach(expense => {
@@ -253,7 +276,7 @@ export const Reports: React.FC = () => {
             if (expenseDate >= start && expenseDate <= end) {
                 const concept = data.concepts.find(c => c.id === expense.conceptId);
                 const category = data.categories.find(cat => cat.id === concept?.categoryId)?.name || 'Sin Categoría';
-                allTransactions.push({ id: expense.id, source: 'daily', type: 'Gasto Diario', date: expense.date, concept: concept?.name || 'N/A', category, amount: expense.amount });
+                allTransactions.push({ id: expense.id, source: 'daily', type: 'Gasto Diario', date: expense.date, concept: concept?.name || 'N/A', category, amount: expense.amount, icon: concept?.icon, iconColor: concept?.iconColor });
             }
         });
         data.plannedExpenses.forEach(expense => {
@@ -262,7 +285,7 @@ export const Reports: React.FC = () => {
                  if (paymentDate >= start && paymentDate <= end) {
                     const concept = data.concepts.find(c => c.id === expense.conceptId);
                     const category = data.categories.find(cat => cat.id === concept?.categoryId)?.name || 'Sin Categoría';
-                    allTransactions.push({ id: payment.id, source: 'planned', expenseId: expense.id, type: 'Gasto Planificado', date: payment.date, concept: concept?.name || 'N/A', category, amount: payment.amount });
+                    allTransactions.push({ id: payment.id, source: 'planned', expenseId: expense.id, type: 'Gasto Planificado', date: payment.date, concept: concept?.name || 'N/A', category, amount: payment.amount, icon: concept?.icon, iconColor: concept?.iconColor });
                 }
             })
         });
@@ -362,52 +385,6 @@ export const Reports: React.FC = () => {
         setDeleteInfo(null);
     };
 
-    const handleImportIncomes = (importedData: any[]) => {
-        if (Array.isArray(importedData)) {
-            const typedData = importedData.map(d => ({
-                ...d,
-                amount: Number(d.amount),
-            })) as Income[];
-            setData({ ...data, incomes: typedData });
-            setSuccessInfo({
-                title: 'Importación Exitosa',
-                message: `${typedData.length} ingresos importados con éxito.`
-            });
-        } else {
-            alert('Error: El archivo CSV no tiene el formato correcto para ingresos.');
-        }
-    };
-    
-    const handleImportDailyExpenses = (importedData: any[]) => {
-        if (Array.isArray(importedData)) {
-            const typedData = importedData.map(d => ({
-                ...d,
-                amount: Number(d.amount),
-            })) as DailyExpense[];
-            setData({ ...data, dailyExpenses: typedData });
-             setSuccessInfo({
-                title: 'Importación Exitosa',
-                message: `${typedData.length} gastos diarios importados con éxito.`
-            });
-        } else {
-             alert('Error: El archivo CSV no tiene el formato correcto para gastos diarios.');
-        }
-    };
-    
-    const incomeHeaders: CsvHeader<Income>[] = [
-        { key: 'id', label: 'ID' },
-        { key: 'description', label: 'Descripción' },
-        { key: 'amount', label: 'Monto' },
-        { key: 'date', label: 'Fecha (ISO)' },
-    ];
-    
-    const dailyExpenseHeaders: CsvHeader<DailyExpense>[] = [
-        { key: 'id', label: 'ID' },
-        { key: 'conceptId', label: 'ID Concepto' },
-        { key: 'amount', label: 'Monto' },
-        { key: 'date', label: 'Fecha (ISO)' },
-    ];
-
     const generateInsight = async () => {
         setIsGenerating(true);
         setInsight('');
@@ -452,6 +429,69 @@ export const Reports: React.FC = () => {
         }
     };
 
+    const generateOptimizationInsight = async () => {
+        setIsGeneratingOptimization(true);
+        setOptimizationInsight('');
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const prompt = `
+                Eres un asesor financiero experto. Analiza los gastos del usuario para ${months[selectedMonth].label} ${selectedYear}.
+                Identifica las 3 categorías con mayor gasto. Para cada una, ofrece 1-2 sugerencias concretas y realistas para reducir costos en el futuro.
+                Además, revisa la lista de transacciones y menciona si parece haber gastos recurrentes que no están marcados como "planificados" (ej. un café diario de Starbucks).
+                Tu tono debe ser constructivo y de apoyo. La respuesta debe estar en español y usar formato markdown.
+
+                DATOS DE GASTOS:
+                - Gastos por Categoría: ${JSON.stringify(categorySpendingData)}
+                - Muestra de transacciones: ${JSON.stringify(filteredTransactions.filter(t => t.type !== 'Ingreso').slice(0, 20))}
+            `;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            setOptimizationInsight(response.text);
+        } catch (error) {
+            console.error("Error generating optimization insight:", error);
+            setOptimizationInsight('No se pudo generar la optimización en este momento.');
+        } finally {
+            setIsGeneratingOptimization(false);
+        }
+    };
+
+    const generateForecastInsight = async () => {
+        setIsGeneratingForecast(true);
+        setForecastInsight('');
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const today = new Date();
+            const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+            const daysPassed = (selectedYear === today.getFullYear() && selectedMonth === today.getMonth()) ? today.getDate() : daysInMonth;
+
+            const budgets = data.monthlyBudgets
+                .filter(b => b.month === selectedMonth && b.year === selectedYear)
+                .map(b => ({
+                    category: data.categories.find(c => c.id === b.categoryId)?.name,
+                    amount: b.amount
+                }));
+
+            const spendingSoFar = categorySpendingData.map(c => ({ category: c.name, spent: c.Gastos }));
+
+            const prompt = `
+                Eres un analista financiero. Hoy es el día ${daysPassed} de un mes de ${daysInMonth} días (${months[selectedMonth].label} ${selectedYear}).
+                El usuario tiene los siguientes presupuestos mensuales: ${JSON.stringify(budgets)}.
+                Hasta ahora, ha gastado lo siguiente por categoría: ${JSON.stringify(spendingSoFar)}.
+
+                1.  Para cada categoría con presupuesto, proyecta el gasto total a fin de mes basándote en el ritmo de gasto actual (gasto actual / días pasados * días en el mes).
+                2.  Crea una tabla en formato Markdown con las columnas: | Categoría | Presupuesto | Gasto Actual | Proyección a Fin de Mes | Estado (En-Riesgo, OK, Excedido) |.
+                3.  Ofrece un breve análisis general y un consejo específico para la categoría con mayor riesgo de exceder su presupuesto.
+                La respuesta debe estar en español.
+            `;
+            const response = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+            setForecastInsight(response.text);
+        } catch (error) {
+            console.error("Error generating forecast insight:", error);
+            setForecastInsight('No se pudo generar la proyección en este momento.');
+        } finally {
+            setIsGeneratingForecast(false);
+        }
+    };
+
 
     return (
         <div className="space-y-8">
@@ -487,93 +527,11 @@ export const Reports: React.FC = () => {
                 </div>
             </GlassCard>
 
-             {/* AI Insight */}
-            <GlassCard className="p-6 bg-primary-50 dark:bg-primary-900/20">
-                <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-xl text-primary-800 dark:text-primary-200">Análisis Financiero AI</h3>
-                    <button onClick={generateInsight} disabled={isGenerating} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-primary-400">
-                        <SparklesIcon className="w-5 h-5" />
-                        {isGenerating ? 'Analizando...' : 'Generar Análisis'}
-                    </button>
-                </div>
-                <div className="prose prose-sm dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 p-4 bg-white/50 dark:bg-black/20 rounded-lg min-h-[6rem]">
-                    {isGenerating ? <p>Generando análisis de tus finanzas...</p> : insight ? <p style={{whiteSpace: "pre-wrap"}}>{insight}</p> : <p className="text-gray-500 dark:text-gray-400">Haz clic en "Generar Análisis" para obtener un resumen de tu salud financiera para el periodo seleccionado.</p>}
-                </div>
-            </GlassCard>
-
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <GlassCard className="p-6">
-                    <h3 className="font-bold text-xl mb-4">Ingresos vs. Gastos</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <ComposedChart data={incomeVsExpenseData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"} />
-                            <XAxis dataKey="month" tick={{ fill: isDark ? '#d1d5db' : '#374151' }} />
-                            <YAxis tickFormatter={formatCurrency} tick={{ fill: isDark ? '#d1d5db' : '#374151' }}/>
-                            <Tooltip content={<CustomTooltipContent />} />
-                            <Legend wrapperStyle={{ color: isDark ? '#d1d5db' : '#374151' }} />
-                            <Bar dataKey="Ingresos" fill="#22c55e" />
-                            <Bar dataKey="Gastos" fill="#ef4444" />
-                            <Line type="monotone" dataKey="Ingresos" stroke="#16a34a" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Gastos" stroke="#dc2626" strokeWidth={2} dot={false} />
-                        </ComposedChart>
-                    </ResponsiveContainer>
-                </GlassCard>
-                <GlassCard className="p-6">
-                    <h3 className="font-bold text-xl mb-4">Gastos por Categoría</h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={categorySpendingData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"} />
-                            <XAxis type="number" tickFormatter={formatCurrency} tick={{ fill: isDark ? '#d1d5db' : '#374151' }}/>
-                            <YAxis type="category" dataKey="name" width={100} tick={{ fill: isDark ? '#d1d5db' : '#374151' }} />
-                            <Tooltip content={<CustomTooltipContent />} />
-                            <Bar dataKey="Gastos" fill="#3b82f6" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </GlassCard>
-            </div>
-            
-            <GlassCard className="p-6">
-                <h3 className="font-bold text-xl mb-4">Herramientas de Datos</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-100 dark:bg-black/20 p-4 rounded-lg">
-                        <h4 className="font-semibold mb-2">Gestión de Ingresos</h4>
-                        <CsvTools 
-                            entityName="Ingresos" 
-                            items={data.incomes} 
-                            headers={incomeHeaders} 
-                            onImport={handleImportIncomes}
-                            onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus ingresos han sido exportados a un archivo CSV.' })}
-                        />
+             {/* AI Insights */}
+            <div className="space-y-6">
+                <GlassCard className="p-6 bg-primary-50 dark:bg-primary-900/20">
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-xl text-primary-800 dark:text-primary-200">Análisis Financiero con IA</h3>
                     </div>
-                    <div className="bg-gray-100 dark:bg-black/20 p-4 rounded-lg">
-                        <h4 className="font-semibold mb-2">Gestión de Gastos Diarios</h4>
-                        <CsvTools 
-                            entityName="Gastos Diarios" 
-                            items={data.dailyExpenses} 
-                            headers={dailyExpenseHeaders} 
-                            onImport={handleImportDailyExpenses}
-                            onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus gastos diarios han sido exportados a un archivo CSV.' })}
-                        />
-                    </div>
-                </div>
-            </GlassCard>
-
-            <TransactionList transactions={filteredTransactions} onDelete={handleDelete} />
-
-            <ConfirmationModal
-                isOpen={!!deleteInfo}
-                onClose={() => setDeleteInfo(null)}
-                onConfirm={confirmDelete}
-                title="Confirmar Eliminación"
-                message="¿Estás seguro de que quieres eliminar esta transacción? Esta acción no se puede deshacer."
-            />
-            <SuccessToast 
-                isOpen={!!successInfo}
-                onClose={() => setSuccessInfo(null)}
-                title={successInfo?.title || ''}
-                message={successInfo?.message || ''}
-            />
-        </div>
-    );
-};
+                     <div className="flex flex-wrap gap-2 justify-start mb-4">
+                        <button onClick={generateInsight} disabled={isGenerating} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-70

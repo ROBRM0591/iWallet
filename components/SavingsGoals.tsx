@@ -5,11 +5,10 @@ import { CloseIcon, PlusIcon, EditIcon, DeleteIcon, WarningIcon, CheckCircleIcon
 import { IconPicker } from './IconPicker';
 import { IconDisplay } from './IconDisplay';
 import { useAuth } from '../contexts/AuthContext';
-import { CsvTools, CsvHeader } from './CsvTools';
 import { generateSequentialId } from './utils';
 
 const GlassCard = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(({ children, className = '' }, ref) => (
-    <div ref={ref} className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
+    <div ref={ref} className={`bg-white/80 dark:bg-slate-800/60 backdrop-blur-2xl rounded-2xl border border-white/30 dark:border-slate-700/80 shadow-2xl text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 ));
@@ -34,7 +33,7 @@ const ConfirmationModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-gray-900 dark:text-white">
+            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-2xl w-full max-w-lg m-4 transform transition-all text-center p-6 text-gray-900 dark:text-white">
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50">
                     <WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" />
                 </div>
@@ -80,7 +79,7 @@ const SuccessToast: React.FC<{
 
     return (
         <div
-            className={`fixed bottom-4 left-4 z-50 w-full max-w-sm transition-all duration-300 ease-in-out ${
+            className={`success-toast-container transition-all duration-300 ease-in-out ${
                 isOpen ? 'transform translate-y-0 opacity-100' : 'transform translate-y-4 opacity-0'
             }`}
         >
@@ -113,7 +112,7 @@ const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, chi
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
+            <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-lg border border-slate-200 dark:border-slate-700 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-xl transform transition-all animate-fadeInUp">
                 <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
                     <h3 className="text-xl font-bold">{title}</h3>
                     <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
@@ -140,21 +139,8 @@ const SavingsGoalForm: React.FC<{
         icon: item?.icon || 'tag',
         iconColor: item?.iconColor || 'text-gray-900 dark:text-white',
     });
-    const [isIconPickerOpen, setIconPickerOpen] = useState(false);
+    const [iconPickerAnchor, setIconPickerAnchor] = useState<HTMLButtonElement | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const iconPickerContainerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (iconPickerContainerRef.current && !iconPickerContainerRef.current.contains(event.target as Node)) {
-                setIconPickerOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -197,11 +183,11 @@ const SavingsGoalForm: React.FC<{
             <div>
                 <label className="block text-sm font-medium">Nombre de la Meta</label>
                  <div className="flex items-center gap-2 mt-1">
-                    <div className="relative" ref={iconPickerContainerRef}>
-                        <button type="button" onClick={() => setIconPickerOpen(prev => !prev)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
+                    <div>
+                        <button type="button" onClick={(e) => setIconPickerAnchor(iconPickerAnchor ? null : e.currentTarget)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
                             <IconDisplay icon={formState.icon} iconColor={formState.iconColor} className="w-6 h-6" />
                         </button>
-                        {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} currentColor={formState.iconColor} />}
+                        {iconPickerAnchor && <IconPicker anchorEl={iconPickerAnchor} onSelect={handleIconSelect} onClose={() => setIconPickerAnchor(null)} currentColor={formState.iconColor} position="left" />}
                     </div>
                     <input type="text" name="name" value={formState.name} onChange={handleChange} className="block w-full rounded-md shadow-sm" />
                 </div>
@@ -310,30 +296,6 @@ export const SavingsGoals: React.FC = () => {
         setDeleteId(null);
     };
 
-    const handleImport = (importedData: any[]) => {
-        if (Array.isArray(importedData)) {
-            const typedData = importedData.map(d => ({
-                ...d,
-                targetAmount: Number(d.targetAmount),
-                currentAmount: Number(d.currentAmount),
-            })) as SavingsGoal[];
-            setData({ ...appData!, savingsGoals: typedData });
-            setSuccessInfo({ title: 'Importación Exitosa', message: `${typedData.length} metas importadas.` });
-        } else {
-            alert('Error: El archivo CSV no tiene el formato correcto.');
-        }
-    };
-    
-    const csvHeaders: CsvHeader<SavingsGoal>[] = [
-        { key: 'id', label: 'ID' },
-        { key: 'name', label: 'Nombre' },
-        { key: 'targetAmount', label: 'Monto Objetivo' },
-        { key: 'currentAmount', label: 'Monto Actual' },
-        { key: 'deadline', label: 'Fecha Límite' },
-        { key: 'icon', label: 'Icono' },
-        { key: 'iconColor', label: 'Color Icono' },
-    ];
-
     if (!appData) return null;
 
     return (
@@ -341,13 +303,6 @@ export const SavingsGoals: React.FC = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h1 className="text-3xl font-bold">Metas de Ahorro</h1>
                 <div className="flex items-center gap-2">
-                    <CsvTools 
-                        entityName="Metas de Ahorro" 
-                        items={appData.savingsGoals} 
-                        headers={csvHeaders} 
-                        onImport={handleImport}
-                        onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tus metas de ahorro han sido exportadas.' })}
-                    />
                     <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg transition">
                         <PlusIcon className="w-5 h-5" />
                         Nueva Meta

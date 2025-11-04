@@ -1,208 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppData, CatalogItem, Category, Concept, CostType, MovementType, MovementTypeName } from '../types';
-import { CloseIcon, PlusIcon, EditIcon, DeleteIcon, ChevronDownIcon, ChevronUpIcon, WarningIcon, CheckCircleIcon, ArrowsUpDownIcon, TagIcon, DownloadIcon, ArrowUpIcon } from './Icons';
+import { PlusIcon, EditIcon, DeleteIcon, WarningIcon, ArrowsUpDownIcon, TagIcon, DownloadIcon, ListBulletIcon, ClipboardIcon, ChevronDownIcon } from './Icons';
 import { CsvTools, CsvHeader } from './CsvTools';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, UserProfile } from '../contexts/AuthContext';
 import { generateSequentialId } from './utils';
 import { IconPicker } from './IconPicker';
 import { IconDisplay } from './IconDisplay';
+import { Modal, ConfirmationModal, SuccessToast } from './common/Portals';
 
 type CatalogKey = keyof Pick<AppData, 'categories' | 'costTypes' | 'movementTypes' | 'concepts'>;
 declare const XLSX: any;
-
-const ConfirmationModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onConfirm: () => void;
-    title: string;
-    message: string;
-}> = ({ isOpen, onClose, onConfirm, title, message }) => {
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener('keydown', handleKeyDown);
-        }
-
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [isOpen, onClose]);
-    
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all text-center p-6 text-gray-900 dark:text-white">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50">
-                    <WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" />
-                </div>
-                <h3 className="text-lg leading-6 font-bold mt-4">{title}</h3>
-                <div className="mt-2">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
-                </div>
-                <div className="mt-6 flex justify-center gap-4">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg transition"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => { onConfirm(); onClose(); }}
-                        className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition"
-                    >
-                        Confirmar
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const SuccessToast: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    title: string;
-    message: string;
-}> = ({ isOpen, onClose, title, message }) => {
-    useEffect(() => {
-        if (isOpen) {
-            const timer = setTimeout(() => {
-                onClose();
-            }, 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [isOpen, onClose]);
-
-    return (
-        <div
-            className={`fixed bottom-4 left-4 z-50 w-full max-w-sm transition-all duration-300 ease-in-out ${
-                isOpen ? 'transform translate-y-0 opacity-100' : 'transform translate-y-4 opacity-0'
-            }`}
-        >
-            {isOpen && (
-                 <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-gray-900 dark:text-white">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                       <CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
-                    </div>
-                    <div className="flex-grow">
-                        <p className="font-bold">{title}</p>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
-                    </div>
-                     <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">&times;</button>
-                </div>
-            )}
-        </div>
-    );
-};
-
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  title: string;
-}
-
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children, title }) => {
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-
-        if (isOpen) {
-            document.addEventListener('keydown', handleKeyDown);
-        }
-
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [isOpen, onClose]);
-    
-    if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-      <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-md m-4 transform transition-all">
-        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
-          <h3 className="text-xl font-bold">{title}</h3>
-          <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition">
-            <CloseIcon className="w-6 h-6" />
-          </button>
-        </div>
-        <div className="p-6">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ImportPreviewModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onConfirm: () => void;
-    fileName: string;
-    sheets: string[];
-}> = ({ isOpen, onClose, onConfirm, fileName, sheets }) => {
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        if (isOpen) document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-    
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-lg m-4 transform transition-all p-6">
-                <h3 className="text-lg leading-6 font-bold">Confirmar Importación</h3>
-                <div className="mt-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Se importarán los siguientes catálogos desde el archivo <strong>{fileName}</strong>. Esta acción reemplazará todos los datos de catálogos existentes.
-                    </p>
-                    <div className="mt-4 max-h-60 overflow-y-auto bg-gray-100 dark:bg-black/20 p-3 rounded-lg">
-                        <h4 className="font-semibold text-sm mb-2">Hojas/Tablas encontradas:</h4>
-                        {sheets.length > 0 ? (
-                            <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                                {sheets.map((sheet, index) => <li key={index}>{sheet}</li>)}
-                            </ul>
-                        ) : (
-                            <p className="text-sm text-gray-500 dark:text-gray-400">No se encontraron tablas o pestañas válidas en el archivo.</p>
-                        )}
-                    </div>
-                </div>
-                <div className="mt-6 flex justify-end gap-4">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg transition"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        disabled={sheets.length === 0}
-                        className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                        Sí, Importar y Reemplazar
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 const getPrefix = (singularTitle: string): string => {
     switch(singularTitle) {
@@ -280,7 +87,7 @@ function CatalogManager<T extends CatalogItem>({ title, singularTitle, items, re
                 </button>
             </div>
             {renderTable(items, handleOpenModal, handleRequestDelete)}
-            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={`${editingItem && 'id' in editingItem ? 'Editar' : 'Nuevo'} ${singularTitle}`}>
+            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={`${editingItem && 'id' in editingItem ? 'Editar' : 'Nuevo'} ${singularTitle}`} maxWidth="max-w-lg">
                 {renderForm(editingItem, handleSave, handleCloseModal)}
             </Modal>
             <ConfirmationModal
@@ -294,29 +101,9 @@ function CatalogManager<T extends CatalogItem>({ title, singularTitle, items, re
     );
 }
 
-const CollapsibleCatalog: React.FC<{ title: string; children: React.ReactNode; isOpen: boolean; onToggle: () => void; }> = ({ title, children, isOpen, onToggle }) => {
-    return (
-        <div className="rounded-2xl shadow-lg transition-colors duration-300 bg-white dark:bg-black/20 backdrop-blur-xl border border-gray-200/80 dark:border-white/20 text-gray-800 dark:text-white">
-            <button
-                onClick={onToggle}
-                className="w-full flex justify-between items-center p-6 text-left"
-            >
-                <h2 className="text-2xl font-bold">{title}</h2>
-                {isOpen ? <ChevronUpIcon className="w-6 h-6 text-primary-500" /> : <ChevronDownIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" />}
-            </button>
-            {isOpen && (
-                <div className="px-6 pb-6 border-t border-gray-200/80 dark:border-white/20">
-                    {children}
-                </div>
-            )}
-        </div>
-    );
-};
-
-// Generic Table for simple catalogs like MovementType
-const GenericTable: React.FC<{
-    items: CatalogItem[];
-    onEdit: (item: CatalogItem) => void;
+const MovementTypeTable: React.FC<{
+    items: MovementType[];
+    onEdit: (item: MovementType) => void;
     onDelete: (id: string) => void;
 }> = ({ items, onEdit, onDelete }) => (
     <div className="overflow-x-auto">
@@ -331,8 +118,9 @@ const GenericTable: React.FC<{
                 {items.map(item => (
                     <tr key={item.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10">
                         <td className="p-3">
-                             <button onClick={() => onEdit(item)} className="text-left font-medium text-gray-800 dark:text-white hover:text-primary-500 dark:hover:text-primary-400 hover:underline">
-                                {item.name}
+                             <button onClick={() => onEdit(item)} className="text-left font-medium text-gray-800 dark:text-white hover:text-primary-500 dark:hover:text-primary-400 hover:underline flex items-center gap-2">
+                                <IconDisplay icon={item.icon} iconColor={item.iconColor} className="w-5 h-5" />
+                                <span>{item.name}</span>
                             </button>
                         </td>
                         <td className="p-3 text-right">
@@ -346,38 +134,57 @@ const GenericTable: React.FC<{
     </div>
 );
 
-
-// --- Forms and Tables for each Catalog Type ---
-
 const MovementTypeForm: React.FC<{
     item: Partial<MovementType> | null;
     onSave: (item: MovementType) => void;
     onCancel: () => void;
 }> = ({ item, onSave, onCancel }) => {
-    const [name, setName] = useState(item?.name || '');
+    const [formData, setFormData] = useState({
+        name: item?.name || '',
+        icon: item?.icon || 'tag',
+        iconColor: item?.iconColor || (document.documentElement.classList.contains('dark') ? 'text-white' : 'text-gray-800'),
+    });
     const [error, setError] = useState('');
+    const [iconPickerAnchor, setIconPickerAnchor] = useState<HTMLButtonElement | null>(null);
+
+    const handleIconSelect = (details: { icon: string; color: string; }) => {
+        setFormData(prev => ({ ...prev, icon: details.icon, iconColor: details.color }));
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) {
+        if (!formData.name.trim()) {
             setError('El nombre es requerido.');
             return;
         }
         setError('');
-        onSave({ ...item, name } as MovementType);
+        onSave({
+            ...item,
+            name: formData.name as MovementTypeName,
+            icon: formData.icon,
+            iconColor: formData.iconColor,
+        } as MovementType);
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className="block text-sm font-medium text-gray-600 dark:text-gray-300">Nombre</label>
-                 <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value as MovementTypeName)}
-                    className="mt-1 block w-full rounded-md shadow-sm"
-                    required
-                />
+                 <div className="flex items-center gap-2 mt-1">
+                    <div>
+                        <button type="button" onClick={(e) => setIconPickerAnchor(iconPickerAnchor ? null : e.currentTarget)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
+                            <IconDisplay icon={formData.icon} iconColor={formData.iconColor} className="w-6 h-6" />
+                        </button>
+                        {iconPickerAnchor && <IconPicker anchorEl={iconPickerAnchor} onSelect={handleIconSelect} onClose={() => setIconPickerAnchor(null)} currentColor={formData.iconColor} position="left" />}
+                    </div>
+                    <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({...prev, name: e.target.value as MovementTypeName}))}
+                        className="block w-full rounded-md shadow-sm"
+                        required
+                    />
+                </div>
                 {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
             </div>
             <div className="flex justify-end gap-4 pt-4">
@@ -395,14 +202,24 @@ const CostTypeForm: React.FC<{
     onSave: (item: CostType) => void;
     onCancel: () => void;
 }> = ({ item, movementTypes, onSave, onCancel }) => {
-    const [formData, setFormData] = useState({ name: item?.name || '', movementTypeId: item?.movementTypeId || '' });
+    const [formData, setFormData] = useState({ 
+        name: item?.name || '', 
+        movementTypeId: item?.movementTypeId || '',
+        icon: item?.icon || 'tag',
+        iconColor: item?.iconColor || (document.documentElement.classList.contains('dark') ? 'text-white' : 'text-gray-800'),
+    });
     const [errors, setErrors] = useState<{ name?: string; movementTypeId?: string }>({});
+    const [iconPickerAnchor, setIconPickerAnchor] = useState<HTMLButtonElement | null>(null);
 
     const validate = () => {
         const newErrors: { name?: string; movementTypeId?: string } = {};
         if (!formData.name.trim()) newErrors.name = 'El nombre es requerido.';
         if (!formData.movementTypeId) newErrors.movementTypeId = 'Debe seleccionar un tipo de movimiento.';
         return newErrors;
+    };
+
+    const handleIconSelect = (details: { icon: string; color: string; }) => {
+        setFormData(prev => ({ ...prev, icon: details.icon, iconColor: details.color }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -412,7 +229,13 @@ const CostTypeForm: React.FC<{
             setErrors(validationErrors);
             return;
         }
-        onSave({ ...item, ...formData } as CostType);
+        onSave({
+            ...item,
+            name: formData.name,
+            movementTypeId: formData.movementTypeId,
+            icon: formData.icon,
+            iconColor: formData.iconColor,
+        } as CostType);
     };
     
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -427,13 +250,21 @@ const CostTypeForm: React.FC<{
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className="block text-sm font-medium">Nombre</label>
-                <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="mt-1 block w-full rounded-md shadow-sm"
-                />
+                <div className="flex items-center gap-2 mt-1">
+                    <div>
+                        <button type="button" onClick={(e) => setIconPickerAnchor(iconPickerAnchor ? null : e.currentTarget)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
+                            <IconDisplay icon={formData.icon} iconColor={formData.iconColor} className="w-6 h-6" />
+                        </button>
+                        {iconPickerAnchor && <IconPicker anchorEl={iconPickerAnchor} onSelect={handleIconSelect} onClose={() => setIconPickerAnchor(null)} currentColor={formData.iconColor} position="left" />}
+                    </div>
+                    <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        className="block w-full rounded-md shadow-sm"
+                    />
+                </div>
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
             <div>
@@ -471,8 +302,9 @@ const CostTypeTable: React.FC<{
                 {items.map(item => (
                     <tr key={item.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10">
                         <td className="p-3">
-                             <button onClick={() => onEdit(item)} className="text-left font-medium text-gray-800 dark:text-white hover:text-primary-500 dark:hover:text-primary-400 hover:underline">
-                                {item.name}
+                             <button onClick={() => onEdit(item)} className="text-left font-medium text-gray-800 dark:text-white hover:text-primary-500 dark:hover:text-primary-400 hover:underline flex items-center gap-2">
+                                <IconDisplay icon={item.icon} iconColor={item.iconColor} className="w-5 h-5" />
+                                <span>{item.name}</span>
                             </button>
                         </td>
                         <td className="p-3 text-gray-600 dark:text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name || 'N/A'}</td>
@@ -502,35 +334,33 @@ const CategoryForm: React.FC<{
         iconColor: item?.iconColor || (document.documentElement.classList.contains('dark') ? 'text-white' : 'text-gray-800'),
     });
     const [errors, setErrors] = useState<{ name?: string; movementTypeId?: string; costTypeId?: string }>({});
-    const [isIconPickerOpen, setIconPickerOpen] = useState(false);
-    const iconPickerContainerRef = useRef<HTMLDivElement>(null);
+    const [iconPickerAnchor, setIconPickerAnchor] = useState<HTMLButtonElement | null>(null);
 
-     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (iconPickerContainerRef.current && !iconPickerContainerRef.current.contains(event.target as Node)) {
-                setIconPickerOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    const isGasto = useMemo(() => {
+        if (!formData.movementTypeId) return false;
+        const movementType = data.movementTypes.find(mt => mt.id === formData.movementTypeId);
+        return movementType?.name === MovementTypeName.GASTO;
+    }, [formData.movementTypeId, data.movementTypes]);
 
     const filteredCostTypes = useMemo(() => {
-        if (!formData.movementTypeId) return [];
+        if (!isGasto) return [];
         return data.costTypes.filter(c => c.movementTypeId === formData.movementTypeId);
-    }, [formData.movementTypeId, data.costTypes]);
+    }, [isGasto, formData.movementTypeId, data.costTypes]);
 
     useEffect(() => {
-        if (formData.costTypeId && !filteredCostTypes.some(c => c.id === formData.costTypeId)) {
+        // Clear cost type if movement type changes and it's no longer applicable
+        if (!isGasto) {
             setFormData(prev => ({ ...prev, costTypeId: '' }));
         }
-    }, [formData.movementTypeId, formData.costTypeId, filteredCostTypes]);
+    }, [isGasto]);
     
     const validate = () => {
         const newErrors: { name?: string; movementTypeId?: string; costTypeId?: string } = {};
         if (!formData.name.trim()) newErrors.name = 'El nombre es requerido.';
         if (!formData.movementTypeId) newErrors.movementTypeId = 'Debe seleccionar un tipo de movimiento.';
-        if (!formData.costTypeId) newErrors.costTypeId = 'Debe seleccionar un tipo de costo.';
+        if (isGasto && !formData.costTypeId) {
+            newErrors.costTypeId = 'Debe seleccionar un tipo de costo para un gasto.';
+        }
         return newErrors;
     };
 
@@ -541,7 +371,15 @@ const CategoryForm: React.FC<{
             setErrors(validationErrors);
             return;
         }
-        onSave({ ...item, ...formData } as Category);
+        onSave({
+            ...item,
+            name: formData.name,
+            description: formData.description,
+            movementTypeId: formData.movementTypeId,
+            costTypeId: isGasto ? formData.costTypeId : '',
+            icon: formData.icon,
+            iconColor: formData.iconColor
+        } as Category);
     };
     
      const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -561,11 +399,11 @@ const CategoryForm: React.FC<{
             <div>
                 <label className="block text-sm font-medium">Nombre</label>
                  <div className="flex items-center gap-2 mt-1">
-                    <div className="relative" ref={iconPickerContainerRef}>
-                        <button type="button" onClick={() => setIconPickerOpen(prev => !prev)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
+                    <div>
+                        <button type="button" onClick={(e) => setIconPickerAnchor(iconPickerAnchor ? null : e.currentTarget)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
                             <IconDisplay icon={formData.icon} iconColor={formData.iconColor} className="w-6 h-6" />
                         </button>
-                        {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} currentColor={formData.iconColor} />}
+                        {iconPickerAnchor && <IconPicker anchorEl={iconPickerAnchor} onSelect={handleIconSelect} onClose={() => setIconPickerAnchor(null)} currentColor={formData.iconColor} position="left" />}
                     </div>
                     <input type="text" name="name" value={formData.name} onChange={handleChange} className="block w-full rounded-md shadow-sm" />
                 </div>
@@ -589,20 +427,21 @@ const CategoryForm: React.FC<{
                 </select>
                  {errors.movementTypeId && <p className="text-red-500 text-xs mt-1">{errors.movementTypeId}</p>}
             </div>
-            <div>
-                <label className="block text-sm font-medium">Tipo de Costo</label>
-                <select 
-                    name="costTypeId"
-                    value={formData.costTypeId} 
-                    onChange={handleChange} 
-                    className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" 
-                    disabled={!formData.movementTypeId}
-                >
-                    <option value="">{formData.movementTypeId ? 'Seleccione...' : 'Primero elija un tipo de movimiento'}</option>
-                    {filteredCostTypes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                {errors.costTypeId && <p className="text-red-500 text-xs mt-1">{errors.costTypeId}</p>}
-            </div>
+            {isGasto && (
+                <div>
+                    <label className="block text-sm font-medium">Tipo de Costo</label>
+                    <select 
+                        name="costTypeId"
+                        value={formData.costTypeId} 
+                        onChange={handleChange} 
+                        className="mt-1 block w-full rounded-md shadow-sm"
+                    >
+                        <option value="">Seleccione...</option>
+                        {filteredCostTypes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    {errors.costTypeId && <p className="text-red-500 text-xs mt-1">{errors.costTypeId}</p>}
+                </div>
+            )}
             <div className="flex justify-end gap-4 pt-4">
                 <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                 <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
@@ -658,52 +497,31 @@ const ConceptForm: React.FC<{
     onSave: (item: Concept) => void;
     onCancel: () => void;
 }> = ({ item, data, onSave, onCancel }) => {
-    const INCOME_KEY = 'income-option';
-    const movIngreso = data.movementTypes.find(m => m.name === MovementTypeName.INGRESO);
-    const isEditingIncome = item?.movementTypeId === movIngreso?.id && !item.categoryId;
-
     const [formData, setFormData] = useState({
         name: item?.name || '',
         description: item?.description || '',
-        categoryId: isEditingIncome ? INCOME_KEY : (item?.categoryId || ''),
+        movementTypeId: item?.movementTypeId || '',
+        costTypeId: item?.costTypeId || '',
+        categoryId: item?.categoryId || '',
         icon: item?.icon || 'tag',
         iconColor: item?.iconColor || (document.documentElement.classList.contains('dark') ? 'text-white' : 'text-gray-800'),
     });
-    const [errors, setErrors] = useState<{ name?: string; categoryId?: string; }>({});
-    const [isIconPickerOpen, setIconPickerOpen] = useState(false);
-    const iconPickerContainerRef = useRef<HTMLDivElement>(null);
+    const [errors, setErrors] = useState<{ name?: string; movementTypeId?: string; categoryId?: string; }>({});
+    const [iconPickerAnchor, setIconPickerAnchor] = useState<HTMLButtonElement | null>(null);
 
-     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (iconPickerContainerRef.current && !iconPickerContainerRef.current.contains(event.target as Node)) {
-                setIconPickerOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const derivedState = useMemo(() => {
-        if (formData.categoryId === INCOME_KEY) {
-            return {
-                costTypeId: '',
-                movementTypeId: movIngreso?.id || '',
-            };
-        }
-        if (formData.categoryId) {
-            const selectedCategory = data.categories.find(c => c.id === formData.categoryId);
-            return {
-                costTypeId: selectedCategory?.costTypeId || '',
-                movementTypeId: selectedCategory?.movementTypeId || '',
-            };
-        }
-        return { costTypeId: '', movementTypeId: '' };
-    }, [formData.categoryId, data.categories, movIngreso]);
+    const filteredCategories = useMemo(() => {
+        if (!formData.movementTypeId) return [];
+        return data.categories.filter(c => c.movementTypeId === formData.movementTypeId);
+    }, [formData.movementTypeId, data.categories]);
 
     const validate = () => {
-        const newErrors: { name?: string; categoryId?: string; } = {};
+        const newErrors: { name?: string; movementTypeId?: string; categoryId?: string; } = {};
         if (!formData.name.trim()) newErrors.name = 'El nombre es requerido.';
-        if (!formData.categoryId) newErrors.categoryId = 'Debe seleccionar una categoría o tipo.';
+        if (!formData.movementTypeId) {
+            newErrors.movementTypeId = 'Debe seleccionar un tipo de movimiento.';
+        } else {
+            if (!formData.categoryId) newErrors.categoryId = 'Debe seleccionar una categoría.';
+        }
         return newErrors;
     };
     
@@ -715,25 +533,60 @@ const ConceptForm: React.FC<{
             return;
         }
 
+        let finalCostTypeId = '';
+        if (formData.categoryId) {
+            const selectedCategory = data.categories.find(c => c.id === formData.categoryId);
+            finalCostTypeId = selectedCategory ? selectedCategory.costTypeId : '';
+        }
+
         onSave({ 
             ...item, 
             name: formData.name, 
             description: formData.description,
             icon: formData.icon,
             iconColor: formData.iconColor,
-            movementTypeId: derivedState.movementTypeId, 
-            categoryId: formData.categoryId === INCOME_KEY ? '' : formData.categoryId, 
-            costTypeId: derivedState.costTypeId 
+            movementTypeId: formData.movementTypeId, 
+            costTypeId: finalCostTypeId, 
+            categoryId: formData.categoryId
         } as Concept);
     };
     
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleMainChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        
+        setFormData(prev => {
+            const newState = { ...prev, [name]: value };
+            if (name === 'movementTypeId') {
+                newState.costTypeId = '';
+                newState.categoryId = '';
+            }
+            return newState;
+        });
+
         if (errors[name as keyof typeof errors]) {
-            setErrors(prev => ({ ...prev, [name]: undefined }));
+            setErrors(prev => {
+                const newErrors = {...prev};
+                delete newErrors[name as keyof typeof errors];
+                return newErrors;
+            });
         }
     };
+
+    const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const selectedCategoryId = e.target.value;
+        const selectedCategory = data.categories.find(c => c.id === selectedCategoryId);
+        
+        setFormData(prev => ({
+            ...prev,
+            categoryId: selectedCategoryId,
+            costTypeId: selectedCategory ? selectedCategory.costTypeId : ''
+        }));
+        
+        if (errors.categoryId) {
+            setErrors(prev => ({...prev, categoryId: undefined}));
+        }
+    };
+
 
      const handleIconSelect = (details: { icon: string; color: string; }) => {
         setFormData(prev => ({ ...prev, icon: details.icon, iconColor: details.color }));
@@ -744,13 +597,13 @@ const ConceptForm: React.FC<{
             <div>
                 <label className="block text-sm font-medium">Nombre</label>
                  <div className="flex items-center gap-2 mt-1">
-                    <div className="relative" ref={iconPickerContainerRef}>
-                        <button type="button" onClick={() => setIconPickerOpen(prev => !prev)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
+                    <div>
+                        <button type="button" onClick={(e) => setIconPickerAnchor(iconPickerAnchor ? null : e.currentTarget)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
                             <IconDisplay icon={formData.icon} iconColor={formData.iconColor} className="w-6 h-6" />
                         </button>
-                        {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} currentColor={formData.iconColor} />}
+                        {iconPickerAnchor && <IconPicker anchorEl={iconPickerAnchor} onSelect={handleIconSelect} onClose={() => setIconPickerAnchor(null)} currentColor={formData.iconColor} position="left" />}
                     </div>
-                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="block w-full rounded-md shadow-sm" />
+                    <input type="text" name="name" value={formData.name} onChange={handleMainChange} className="block w-full rounded-md shadow-sm" />
                 </div>
                 {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
@@ -759,36 +612,35 @@ const ConceptForm: React.FC<{
                 <textarea
                     name="description"
                     value={formData.description}
-                    onChange={handleChange}
+                    onChange={handleMainChange}
                     className="mt-1 block w-full rounded-md shadow-sm"
                     rows={3}
                 />
             </div>
             <div>
-                <label className="block text-sm font-medium">Categoría (o tipo)</label>
-                <select name="categoryId" value={formData.categoryId} onChange={handleChange} className="mt-1 block w-full rounded-md shadow-sm">
+                <label className="block text-sm font-medium">Tipo de Movimiento</label>
+                <select name="movementTypeId" value={formData.movementTypeId} onChange={handleMainChange} className="mt-1 block w-full rounded-md shadow-sm">
                     <option value="">Seleccione...</option>
-                    <option value={INCOME_KEY}>-- Es un Ingreso --</option>
-                    <optgroup label="Categorías de Gastos">
-                        {data.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </optgroup>
+                    {data.movementTypes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+                {errors.movementTypeId && <p className="text-red-500 text-xs mt-1">{errors.movementTypeId}</p>}
+            </div>
+            
+            <div>
+                <label className="block text-sm font-medium">Categoría</label>
+                <select 
+                    name="categoryId" 
+                    value={formData.categoryId} 
+                    onChange={handleCategoryChange} 
+                    className="mt-1 block w-full rounded-md shadow-sm"
+                    disabled={!formData.movementTypeId}
+                >
+                    <option value="">{formData.movementTypeId ? 'Seleccione...' : 'Primero elija un tipo de movimiento'}</option>
+                    {filteredCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 {errors.categoryId && <p className="text-red-500 text-xs mt-1">{errors.categoryId}</p>}
             </div>
-            <div>
-                <label className="block text-sm font-medium">Tipo de Costo</label>
-                <select value={derivedState.costTypeId} className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" disabled>
-                    <option value="">{formData.categoryId ? 'Autocompletado' : 'Seleccione una categoría'}</option>
-                    {data.costTypes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-            </div>
-            <div>
-                <label className="block text-sm font-medium">Tipo de Movimiento</label>
-                <select value={derivedState.movementTypeId} className="mt-1 block w-full rounded-md shadow-sm disabled:bg-gray-200 dark:disabled:bg-gray-700/50" disabled>
-                    <option value="">{formData.categoryId ? 'Autocompletado' : 'Seleccione una categoría'}</option>
-                    {data.movementTypes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-            </div>
+
             <div className="flex justify-end gap-4 pt-4">
                 <button type="button" onClick={onCancel} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
                 <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
@@ -825,12 +677,12 @@ const ConceptTable: React.FC<{
                             </button>
                         </td>
                         <td className="p-3 text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs">{item.description || 'N/A'}</td>
-                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.movementTypes.find(m => m.id === item.movementTypeId)?.name || 'N/A'}</td>
                         <td className="p-3 text-gray-600 dark:text-gray-300">{data.costTypes.find(c => c.id === item.costTypeId)?.name || 'N/A'}</td>
-                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.categories.find(c => c.id === item.categoryId)?.name || 'N/A'}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-300">{data.categories.find(cat => cat.id === item.categoryId)?.name || 'N/A'}</td>
                         <td className="p-3 text-right">
-                           <button onClick={() => onEdit(item)} className="text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
-                           <button onClick={() => onDelete(item.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
+                            <button onClick={() => onEdit(item)} className="text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 p-1"><EditIcon className="w-5 h-5"/></button>
+                            <button onClick={() => onDelete(item.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
                         </td>
                     </tr>
                 ))}
@@ -840,367 +692,317 @@ const ConceptTable: React.FC<{
 );
 
 export const Catalogs: React.FC = () => {
-    const { appData: data, setData } = useAuth();
-    const [activeCatalog, setActiveCatalog] = useState<string>('Tipos de Movimiento');
+    const { appData: data, setData, userProfile } = useAuth();
+    const [activeTab, setActiveTab] = useState<CatalogKey>('movementTypes');
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
-    const [globalSearchTerm, setGlobalSearchTerm] = useState('');
-    const [isDataMenuOpen, setIsDataMenuOpen] = useState(false);
-    const dataMenuRef = useRef<HTMLDivElement>(null);
-    const importFileInputRef = useRef<HTMLInputElement>(null);
-    const [importPreview, setImportPreview] = useState<{
-        isOpen: boolean;
-        fileName: string;
-        sheets: string[];
-        onConfirm: () => void;
-    } | null>(null);
+    const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
+    const [dataToImport, setDataToImport] = useState<Partial<AppData> | null>(null);
+    const importFileRef = useRef<HTMLInputElement>(null);
+    const [isGlobalMenuOpen, setIsGlobalMenuOpen] = useState(false);
+    const globalMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dataMenuRef.current && !dataMenuRef.current.contains(event.target as Node)) {
-                setIsDataMenuOpen(false);
+            if (globalMenuRef.current && !globalMenuRef.current.contains(event.target as Node)) {
+                setIsGlobalMenuOpen(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [globalMenuRef]);
 
-    if (!data) {
-        return <div>Cargando...</div>;
-    }
-    
-    const filteredData = useMemo(() => {
-        if (!globalSearchTerm) return data;
-        const term = globalSearchTerm.toLowerCase();
-        
-        const filterByName = <T extends CatalogItem,>(items: T[]) => items.filter(item => item.name.toLowerCase().includes(term));
-        
-        return {
-            ...data,
-            movementTypes: filterByName(data.movementTypes),
-            costTypes: filterByName(data.costTypes),
-            categories: filterByName(data.categories),
-            concepts: filterByName(data.concepts),
-        };
-    }, [data, globalSearchTerm]);
+    const movementTypeHeaders: CsvHeader<MovementType>[] = [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'icon', label: 'Icono' }, { key: 'iconColor', label: 'Color' }];
+    const costTypeHeaders: CsvHeader<CostType>[] = [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'icon', label: 'Icono' }, { key: 'iconColor', label: 'Color' }];
+    const categoryHeaders: CsvHeader<Category>[] = [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'icon', label: 'Icono' }, { key: 'iconColor', label: 'Color' }];
+    const conceptHeaders: CsvHeader<Concept>[] = [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'categoryId', label: 'ID Categoría' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'icon', label: 'Icono' }, { key: 'iconColor', label: 'Color' }];
 
+    const handleCrud = <T extends CatalogItem>(
+        key: CatalogKey, 
+        action: 'add' | 'update' | 'delete', 
+        itemOrId: T | string
+    ) => {
+        if (!data) return;
+        let newItems;
+        const currentItems = data[key] as T[];
 
-    const handleUpdate = <T extends CatalogItem,>(key: CatalogKey, item: T) => {
-        setData({
-            ...data,
-            [key]: (data[key] as T[]).map((i) => (i.id === item.id ? item : i)),
-        });
-    };
-
-    const handleAdd = <T extends CatalogItem,>(key: CatalogKey, item: T) => {
-        setData({
-            ...data,
-            [key]: [...(data[key] as T[]), item],
-        });
-    };
-
-    const handleDelete = (key: CatalogKey, id: string) => {
-        setData({
-            ...data,
-            [key]: (data[key] as CatalogItem[]).filter((i: CatalogItem) => i.id !== id),
-        });
-    };
-    
-    const handleImport = (key: CatalogKey, importedData: any[]) => {
-        // Simple validation, can be enhanced
-        if (Array.isArray(importedData) && importedData.every(item => 'id' in item && 'name' in item)) {
-            setData({
-                ...data,
-                [key]: importedData
-            });
-            setSuccessInfo({
-                title: 'Importación Exitosa',
-                message: `${importedData.length} registros importados a ${key} con éxito.`
-            });
-        } else {
-            alert(`Error: El archivo XLSX no tiene el formato correcto para ${key}.`);
+        switch(action) {
+            case 'add':
+                newItems = [...currentItems, itemOrId as T];
+                break;
+            case 'update':
+                const updatedItem = itemOrId as T;
+                newItems = currentItems.map(i => i.id === updatedItem.id ? updatedItem : i);
+                break;
+            case 'delete':
+                newItems = currentItems.filter(i => i.id !== itemOrId as string);
+                break;
         }
+        setData({ ...data, [key]: newItems });
     };
-    
+
+    const handleSingleImport = (key: CatalogKey) => (items: CatalogItem[]) => {
+        if (!data) return;
+        setData({ ...data, [key]: items });
+        setSuccessInfo({ title: 'Importación Exitosa', message: `Los datos de ${key} se han importado correctamente.` });
+    };
+
     const handleExportSuccess = (title: string) => {
-        setSuccessInfo({
-            title: 'Exportación Exitosa',
-            message: `Los datos de "${title}" se han exportado a un archivo XLSX.`
-        });
+        setSuccessInfo({ title: 'Exportación Exitosa', message: `El catálogo de ${title} se ha exportado.` });
     };
-    
-    const executeImportAllXlsx = (workbook: any) => {
+
+    const handleExportAll = () => {
+        if (!data) return;
         try {
-            const newCatalogData: Pick<AppData, 'movementTypes' | 'costTypes' | 'categories' | 'concepts'> = {
-                movementTypes: [], costTypes: [], categories: [], concepts: []
+            const wb = XLSX.utils.book_new();
+
+            const addSheet = <T extends {}>(sheetName: string, items: T[], headers: CsvHeader<T>[]) => {
+                const headerRow = headers.map(h => h.label);
+                const dataRows = items.map(item =>
+                    headers.map(header => {
+                        const value = item[header.key as keyof T];
+                        return header.formatter ? header.formatter(value) : String(value ?? '');
+                    })
+                );
+                const sheetData = [headerRow, ...dataRows];
+                const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
             };
 
-            const catalogDefs = [
-                { sheetName: 'Tipos de Movimiento', key: 'movementTypes', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }] },
-                { sheetName: 'Tipos de Costo', key: 'costTypes', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }] },
-                { sheetName: 'Categorías', key: 'categories', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripcion' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}] },
-                { sheetName: 'Conceptos', key: 'concepts', headers: [{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripcion' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'categoryId', label: 'ID Categoria' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}] }
-            ];
+            addSheet('Tipos_Movimiento', data.movementTypes, movementTypeHeaders);
+            addSheet('Tipos_Costo', data.costTypes, costTypeHeaders);
+            addSheet('Categorias', data.categories, categoryHeaders);
+            addSheet('Conceptos', data.concepts, conceptHeaders);
 
-            catalogDefs.forEach(def => {
-                const sheet = workbook.Sheets[def.sheetName];
-                if (sheet) {
-                    const jsonData: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-                    const mappedData = jsonData.map(row => {
-                        const newRow: { [key: string]: any } = {};
-                        def.headers.forEach(headerDef => {
-                           newRow[headerDef.key] = row[headerDef.label] !== undefined ? String(row[headerDef.label]).trim() : '';
-                        });
-                        return newRow;
-                    });
-                    newCatalogData[def.key as keyof typeof newCatalogData] = mappedData as any;
-                }
-            });
+            XLSX.writeFile(wb, `iwallet_catalogos_export.xlsx`);
+            setSuccessInfo({ title: 'Exportación Completa', message: 'Todos los catálogos han sido exportados.' });
 
-            if (Object.values(newCatalogData).every(arr => arr.length === 0)) {
-                throw new Error("El archivo XLSX no contiene datos válidos o las pestañas no tienen los nombres esperados (ej. 'Tipos de Movimiento', 'Categorías', etc.).");
-            }
-
-            setData({ ...data, ...newCatalogData });
-            setSuccessInfo({ title: '¡Importación Completa!', message: 'Todos los catálogos han sido restaurados desde el archivo XLSX.' });
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
-            console.error("Error al importar el archivo XLSX:", error);
-            alert(`Error al procesar el archivo: ${errorMessage}`);
+            console.error("Error al exportar todo:", error);
+            alert("Ocurrió un error al exportar los catálogos.");
         }
     };
 
-    const handleImportFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImportAllClick = () => {
+        importFileRef.current?.click();
+    };
+
+    const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        const fileExtension = file.name.split('.').pop()?.toLowerCase();
-        
-        if (fileExtension === 'xlsx') {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const buffer = e.target?.result;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const buffer = e.target?.result;
+            try {
                 const workbook = XLSX.read(buffer, { type: 'array' });
-                
-                setImportPreview({
-                    isOpen: true,
-                    fileName: file.name,
-                    sheets: workbook.SheetNames,
-                    onConfirm: () => {
-                        executeImportAllXlsx(workbook);
-                        setImportPreview(null);
-                    }
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        } else {
-            alert('Por favor, selecciona un archivo .xlsx válido.');
-        }
+                const importedData: Partial<AppData> = {};
 
-        if (event.target) event.target.value = '';
+                const processSheet = <T extends CatalogItem>(sheetName: string, headers: CsvHeader<T>[], catalogKey: CatalogKey) => {
+                    const ws = workbook.Sheets[sheetName];
+                    if (!ws) return;
+                    
+                    const jsonData: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+                    const labelToKeyMap = new Map<string, keyof T>();
+                    headers.forEach(h => labelToKeyMap.set(h.label, h.key));
+                    const expectedHeaders = headers.map(h => h.label);
+                    
+                    const mappedData = jsonData.map(row => {
+                        const newRow: Partial<T> = {};
+                        for (const label of expectedHeaders) {
+                            const key = labelToKeyMap.get(label);
+                            if (key && row[label] !== undefined) {
+                               (newRow as any)[key] = String(row[label]).trim();
+                            }
+                        }
+                        return newRow as T;
+                    }).filter(item => item.id); 
+                    (importedData as any)[catalogKey] = mappedData;
+                };
+
+                processSheet('Tipos_Movimiento', movementTypeHeaders, 'movementTypes');
+                processSheet('Tipos_Costo', costTypeHeaders, 'costTypes');
+                processSheet('Categorias', categoryHeaders, 'categories');
+                processSheet('Conceptos', conceptHeaders, 'concepts');
+
+                if (Object.keys(importedData).length > 0) {
+                    setDataToImport(importedData);
+                    setIsImportConfirmOpen(true);
+                } else {
+                    alert('El archivo no contiene ninguna hoja de catálogo válida.');
+                }
+
+            } catch (error) {
+                console.error("Error parsing XLSX file for all catalogs:", error);
+                alert(`Error al procesar el archivo XLSX: ${error instanceof Error ? error.message : 'Formato incorrecto.'}`);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        if(event.target) event.target.value = '';
+    };
+
+    const confirmImportAll = () => {
+        if (dataToImport) {
+            setData({ ...data!, ...dataToImport });
+            setSuccessInfo({ title: 'Importación Exitosa', message: 'Todos los catálogos han sido importados.' });
+        }
+        setIsImportConfirmOpen(false);
+        setDataToImport(null);
+    };
+
+    
+    if (!data) return <div>Cargando datos...</div>;
+    
+    const getCatalogIcon = (section: 'movementTypes' | 'costTypes' | 'categories' | 'concepts', defaultIcon: string) => {
+        const settings = userProfile?.catalogSectionIcons?.[section];
+        const icon = settings?.icon || defaultIcon;
+        const color = settings?.color || 'text-current';
+        return <IconDisplay icon={icon} iconColor={color} className="w-5 h-5" />;
     };
     
-    const handleExportAllXlsx = () => {
-        setIsDataMenuOpen(false);
-        if (!data) return;
+    const getCatalogName = (section: keyof UserProfile['catalogSectionNames'], defaultName: string) => userProfile?.catalogSectionNames?.[section] || defaultName;
 
-        const today = new Date().toISOString().slice(0, 10);
-        const filename = `iwallet-catalogs-backup-${today}.xlsx`;
-
-        const catalogs = [
-            { name: 'Tipos de Movimiento', items: data.movementTypes, headers: [{ key: 'id' as keyof MovementType, label: 'ID' }, { key: 'name' as keyof MovementType, label: 'Nombre' }] },
-            { name: 'Tipos de Costo', items: data.costTypes, headers: [{ key: 'id' as keyof CostType, label: 'ID' }, { key: 'name' as keyof CostType, label: 'Nombre' }, { key: 'movementTypeId' as keyof CostType, label: 'ID Tipo Movimiento' }] },
-            { name: 'Categorías', items: data.categories, headers: [{ key: 'id' as keyof Category, label: 'ID' }, { key: 'name' as keyof Category, label: 'Nombre' }, { key: 'description' as keyof Category, label: 'Descripcion' }, { key: 'movementTypeId' as keyof Category, label: 'ID Tipo Movimiento' }, { key: 'costTypeId' as keyof Category, label: 'ID Tipo Costo' }, {key: 'icon' as keyof Category, label: 'Icono'}, {key: 'iconColor' as keyof Category, label: 'Color Icono'}] },
-            { name: 'Conceptos', items: data.concepts, headers: [{ key: 'id' as keyof Concept, label: 'ID' }, { key: 'name' as keyof Concept, label: 'Nombre' }, { key: 'description' as keyof Concept, label: 'Descripcion' }, { key: 'movementTypeId' as keyof Concept, label: 'ID Tipo Movimiento' }, { key: 'costTypeId' as keyof Concept, label: 'ID Tipo Costo' }, { key: 'categoryId' as keyof Concept, label: 'ID Categoria' }, {key: 'icon' as keyof Concept, label: 'Icono'}, {key: 'iconColor' as keyof Concept, label: 'Color Icono'}] }
-        ];
-
-        try {
-            const wb = XLSX.utils.book_new();
-            catalogs.forEach(catalog => {
-                const headerRow = catalog.headers.map(h => h.label);
-                const dataRows = catalog.items.map(item => {
-                    return catalog.headers.map(header => {
-                        const value = item[header.key];
-                        // Using any for formatter to avoid complex type casting, as it's not defined for these headers anyway.
-                        const formattedValue = (header as any).formatter ? (header as any).formatter(value) : value;
-                        return formattedValue;
-                    });
-                });
-                const sheetData = [headerRow, ...dataRows];
-                const ws = XLSX.utils.aoa_to_sheet(sheetData);
-                XLSX.utils.book_append_sheet(wb, ws, catalog.name);
-            });
-            XLSX.writeFile(wb, filename);
-            setSuccessInfo({ title: 'Exportación Exitosa', message: `Los catálogos se han guardado en ${filename}.` });
-        } catch (error) {
-            console.error("Error al exportar a XLSX:", error);
-            alert("Ocurrió un error al exportar el archivo XLSX.");
-        }
-    };
-    
-    const catalogSections = [
-        { name: 'Tipos de Movimiento', color: 'border-blue-500', icon: <ArrowsUpDownIcon className="w-5 h-5" /> },
-        { name: 'Tipos de Costo', color: 'border-purple-500', icon: <TagIcon className="w-5 h-5" /> },
-        { name: 'Categorías', color: 'border-red-500', icon: <TagIcon className="w-5 h-5" /> },
-        { name: 'Conceptos', color: 'border-green-500', icon: <TagIcon className="w-5 h-5" /> },
+    const catalogTabs: { key: CatalogKey; name: string; defaultIcon: string; }[] = [
+        { key: 'movementTypes', name: getCatalogName('movementTypes', "Tipos de Movimiento"), defaultIcon: 'arrows-up-down' },
+        { key: 'costTypes', name: getCatalogName('costTypes', "Tipos de Costo"), defaultIcon: 'tag' },
+        { key: 'categories', name: getCatalogName('categories', "Categorías"), defaultIcon: 'list-bullet' },
+        { key: 'concepts', name: getCatalogName('concepts', "Conceptos"), defaultIcon: 'clipboard' },
     ];
-
-    const renderContent = () => {
-        switch(activeCatalog) {
-            case 'Tipos de Movimiento':
-                return (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {filteredData.movementTypes.map(item => (
-                                <div key={item.id} className="bg-gray-100 dark:bg-slate-800/50 p-3 rounded-lg flex items-center gap-3">
-                                    <div className={`p-2 rounded-full ${item.name === MovementTypeName.INGRESO ? 'bg-green-100 dark:bg-green-500/20' : 'bg-red-100 dark:bg-red-500/20'}`}>
-                                        <ArrowsUpDownIcon className={`w-5 h-5 ${item.name === MovementTypeName.INGRESO ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}/>
-                                    </div>
-                                    <span className="font-semibold">{item.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <CatalogManager
-                            title="Tipos de Movimiento" singularTitle="Tipo de Movimiento" items={filteredData.movementTypes}
-                            onAdd={(item) => handleAdd('movementTypes', item as MovementType)} onUpdate={(item) => handleUpdate('movementTypes', item as MovementType)} onDelete={(id) => handleDelete('movementTypes', id)}
-                            renderForm={(item, onSave, onCancel) => <MovementTypeForm item={item as Partial<MovementType>} onSave={onSave as (item: MovementType) => void} onCancel={onCancel} />}
-                            renderTable={(items, onEdit, onDelete) => <GenericTable items={items} onEdit={onEdit} onDelete={onDelete} />}
-                            csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }]} onImport={(d) => handleImport('movementTypes', d)}
-                            onExportSuccess={() => handleExportSuccess('Tipos de Movimiento')}
-                        />
-                    </div>
-                );
-            case 'Tipos de Costo':
-                return (
-                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {filteredData.costTypes.map(item => (
-                                <div key={item.id} className="bg-gray-100 dark:bg-slate-800/50 p-3 rounded-lg flex items-center gap-3">
-                                     <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-500/20">
-                                        <TagIcon className="w-5 h-5 text-purple-600 dark:text-purple-400"/>
-                                    </div>
-                                    <span className="font-semibold">{item.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                         <CatalogManager
-                            title="Tipos de Costo" singularTitle="Tipo de Costo" items={filteredData.costTypes}
-                            onAdd={(item) => handleAdd('costTypes', item as CostType)} onUpdate={(item) => handleUpdate('costTypes', item as CostType)} onDelete={(id) => handleDelete('costTypes', id)}
-                            renderForm={(item, onSave, onCancel) => <CostTypeForm item={item as Partial<CostType>} movementTypes={data.movementTypes} onSave={onSave as (item: CostType) => void} onCancel={onCancel} />}
-                            renderTable={(items, onEdit, onDelete) => <CostTypeTable items={items as CostType[]} data={data} onEdit={onEdit as (item: CostType) => void} onDelete={onDelete} />}
-                            csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }]}
-                            onImport={(d) => handleImport('costTypes', d)} onExportSuccess={() => handleExportSuccess('Tipos de Costo')}
-                        />
-                    </div>
-                );
-            case 'Categorías':
-                 return <CatalogManager
-                        title="Categorías" singularTitle="Categoría" items={filteredData.categories}
-                        onAdd={(item) => handleAdd('categories', item as Category)} onUpdate={(item) => handleUpdate('categories', item as Category)} onDelete={(id) => handleDelete('categories', id)}
-                        renderForm={(item, onSave, onCancel) => <CategoryForm item={item as Partial<Category>} data={data} onSave={onSave as (item: Category) => void} onCancel={onCancel} />}
-                        renderTable={(items, onEdit, onDelete) => <CategoryTable items={items as Category[]} data={data} onEdit={onEdit as (item: Category) => void} onDelete={onDelete} />}
-                        csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}]}
-                        onImport={(d) => handleImport('categories', d)} onExportSuccess={() => handleExportSuccess('Categorías')}
-                    />;
-            case 'Conceptos':
-                return <CatalogManager
-                        title="Conceptos" singularTitle="Concepto" items={filteredData.concepts}
-                        onAdd={(item) => handleAdd('concepts', item as Concept)} onUpdate={(item) => handleUpdate('concepts', item as Concept)} onDelete={(id) => handleDelete('concepts', id)}
-                        renderForm={(item, onSave, onCancel) => <ConceptForm item={item as Partial<Concept>} data={data} onSave={onSave as (item: Concept) => void} onCancel={onCancel} />}
-                        renderTable={(items, onEdit, onDelete) => <ConceptTable items={items as Concept[]} data={data} onEdit={onEdit as (item: Concept) => void} onDelete={onDelete} />}
-                        csvHeaders={[{ key: 'id', label: 'ID' }, { key: 'name', label: 'Nombre' }, { key: 'description', label: 'Descripción' }, { key: 'movementTypeId', label: 'ID Tipo Movimiento' }, { key: 'costTypeId', label: 'ID Tipo Costo' }, { key: 'categoryId', label: 'ID Categoría' }, {key: 'icon', label: 'Icono'}, {key: 'iconColor', label: 'Color Icono'}]}
-                        onImport={(d) => handleImport('concepts', d)} onExportSuccess={() => handleExportSuccess('Conceptos')}
-                    />
-            default: return null;
-        }
-    }
-
+    
     return (
-        <div className="flex flex-col md:flex-row gap-8">
-            <input type="file" ref={importFileInputRef} onChange={handleImportFileSelect} className="hidden" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
-            
-            <aside className="w-full md:w-64 flex-shrink-0">
-                 <h2 className="text-xl font-bold mb-4 text-gray-600 dark:text-gray-300">Catálogos</h2>
-                 <div className="bg-gray-100/50 dark:bg-black/20 p-2 rounded-xl">
-                     <nav className="space-y-1">
-                        {catalogSections.map(section => {
-                            const isActive = activeCatalog === section.name;
-                            return (
-                                <button
-                                    key={section.name}
-                                    onClick={() => setActiveCatalog(section.name)}
-                                    className={`w-full flex items-center gap-3 p-3 rounded-lg text-left text-sm font-semibold transition-colors relative ${
-                                        isActive ? 'bg-primary-500/20 text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white'
-                                    }`}
-                                >
-                                    <span className={`absolute left-0 top-2 bottom-2 w-1 rounded-r-full ${isActive ? section.color.replace('border-', 'bg-') : 'bg-transparent'}`}></span>
-                                    <span className={isActive ? section.color.replace('border-','text-') : ''}>{section.icon}</span>
-                                    {section.name}
-                                </button>
-                            )
-                        })}
-                     </nav>
-                 </div>
-            </aside>
-
-            <main className="flex-1 min-w-0">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{activeCatalog}</h1>
-                     <div className="w-full md:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                         <input
-                            type="text"
-                            placeholder="Buscar por concepto..."
-                            value={globalSearchTerm}
-                            onChange={(e) => setGlobalSearchTerm(e.target.value)}
-                            className="w-full sm:w-64 px-3 py-2 rounded-md shadow-sm"
-                        />
-                         <div ref={dataMenuRef} className="relative">
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h1 className="text-3xl font-bold">Catálogos</h1>
+                <div className="flex items-center gap-2">
+                    <input type="file" ref={importFileRef} onChange={handleFileSelected} className="hidden" accept=".xlsx" />
+                    <div className="relative inline-block text-left" ref={globalMenuRef}>
+                        <div>
                             <button
-                                onClick={() => setIsDataMenuOpen(v => !v)}
-                                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white dark:bg-black/20 hover:bg-gray-50 dark:hover:bg-white/10 border border-gray-300 dark:border-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg transition"
+                                type="button"
+                                onClick={() => setIsGlobalMenuOpen(!isGlobalMenuOpen)}
+                                className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-3 rounded-lg text-sm"
                             >
-                                <span>Importar / Exportar Todo</span>
-                                <ChevronDownIcon className="w-4 h-4"/>
+                                Importar/Exportar Todo
+                                <ChevronDownIcon className={`w-4 h-4 transition-transform ${isGlobalMenuOpen ? 'rotate-180' : ''}`} />
                             </button>
-                            {isDataMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-56 origin-top-right bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/10 divide-y divide-gray-200 dark:divide-white/10 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                                    <div className="px-1 py-1">
-                                        <button onClick={handleExportAllXlsx} className="w-full flex items-center gap-2 text-left rounded-md px-2 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10">
-                                            <DownloadIcon className="w-4 h-4" />
-                                            Exportar Todo (.xlsx)
-                                        </button>
-                                    </div>
-                                    <div className="px-1 py-1">
-                                        <button onClick={() => importFileInputRef.current?.click()} className="w-full flex items-center gap-2 text-left rounded-md px-2 py-2 text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10">
-                                            <ArrowUpIcon className="w-4 h-4" />
-                                            Importar Todo (.xlsx)
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
                         </div>
+                        {isGlobalMenuOpen && (
+                            <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                                <div className="py-1" role="menu" aria-orientation="vertical">
+                                    <button
+                                        onClick={() => { handleImportAllClick(); setIsGlobalMenuOpen(false); }}
+                                        className="w-full text-left text-gray-700 dark:text-gray-200 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
+                                    >
+                                        Importar Catálogos
+                                    </button>
+                                    <button
+                                        onClick={() => { handleExportAll(); setIsGlobalMenuOpen(false); }}
+                                        className="w-full text-left text-gray-700 dark:text-gray-200 block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
+                                    >
+                                        Exportar Catálogos
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-
-                <div className="bg-white/80 dark:bg-black/20 p-4 sm:p-6 rounded-xl">
-                    {renderContent()}
-                </div>
-            </main>
+            </div>
+    
+            <div className="border-b border-gray-300 dark:border-white/20">
+                <nav className="-mb-px flex flex-wrap space-x-4" aria-label="Tabs">
+                    {catalogTabs.map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`${
+                                activeTab === tab.key
+                                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'
+                            } flex items-center gap-2 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors`}
+                            aria-current={activeTab === tab.key ? 'page' : undefined}
+                        >
+                            {getCatalogIcon(tab.key, tab.defaultIcon)}
+                            {tab.name}
+                        </button>
+                    ))}
+                </nav>
+            </div>
+    
+            <div className="mt-6">
+                {activeTab === 'movementTypes' && (
+                    <CatalogManager<MovementType>
+                        title="Tipos de Movimiento"
+                        singularTitle="Tipo de Movimiento"
+                        items={data.movementTypes}
+                        renderForm={(item, onSave, onCancel) => <MovementTypeForm item={item} onSave={onSave} onCancel={onCancel} />}
+                        renderTable={(items, onEdit, onDelete) => <MovementTypeTable items={items} onEdit={onEdit} onDelete={onDelete} />}
+                        onAdd={(item) => handleCrud('movementTypes', 'add', item)}
+                        onUpdate={(item) => handleCrud('movementTypes', 'update', item)}
+                        onDelete={(id) => handleCrud('movementTypes', 'delete', id)}
+                        csvHeaders={movementTypeHeaders}
+                        onImport={handleSingleImport('movementTypes')}
+                        onExportSuccess={() => handleExportSuccess('Tipos de Movimiento')}
+                    />
+                )}
+                {activeTab === 'costTypes' && (
+                     <CatalogManager<CostType>
+                        title="Tipos de Costo"
+                        singularTitle="Tipo de Costo"
+                        items={data.costTypes}
+                        renderForm={(item, onSave, onCancel) => <CostTypeForm item={item} movementTypes={data.movementTypes} onSave={onSave} onCancel={onCancel} />}
+                        renderTable={(items, onEdit, onDelete) => <CostTypeTable items={items} data={data} onEdit={onEdit} onDelete={onDelete} />}
+                        onAdd={(item) => handleCrud('costTypes', 'add', item)}
+                        onUpdate={(item) => handleCrud('costTypes', 'update', item)}
+                        onDelete={(id) => handleCrud('costTypes', 'delete', id)}
+                        csvHeaders={costTypeHeaders}
+                        onImport={handleSingleImport('costTypes')}
+                        onExportSuccess={() => handleExportSuccess('Tipos de Costo')}
+                    />
+                )}
+                {activeTab === 'categories' && (
+                    <CatalogManager<Category>
+                        title="Categorías"
+                        singularTitle="Categoría"
+                        items={data.categories}
+                        renderForm={(item, onSave, onCancel) => <CategoryForm item={item} data={data} onSave={onSave} onCancel={onCancel} />}
+                        renderTable={(items, onEdit, onDelete) => <CategoryTable items={items} data={data} onEdit={onEdit} onDelete={onDelete} />}
+                        onAdd={(item) => handleCrud('categories', 'add', item)}
+                        onUpdate={(item) => handleCrud('categories', 'update', item)}
+                        onDelete={(id) => handleCrud('categories', 'delete', id)}
+                        csvHeaders={categoryHeaders}
+                        onImport={handleSingleImport('categories')}
+                        onExportSuccess={() => handleExportSuccess('Categorías')}
+                    />
+                )}
+                {activeTab === 'concepts' && (
+                     <CatalogManager<Concept>
+                        title="Conceptos"
+                        singularTitle="Concepto"
+                        items={data.concepts}
+                        renderForm={(item, onSave, onCancel) => <ConceptForm item={item} data={data} onSave={onSave} onCancel={onCancel} />}
+                        renderTable={(items, onEdit, onDelete) => <ConceptTable items={items} data={data} onEdit={onEdit} onDelete={onDelete} />}
+                        onAdd={(item) => handleCrud('concepts', 'add', item)}
+                        onUpdate={(item) => handleCrud('concepts', 'update', item)}
+                        onDelete={(id) => handleCrud('concepts', 'delete', id)}
+                        csvHeaders={conceptHeaders}
+                        onImport={handleSingleImport('concepts')}
+                        onExportSuccess={() => handleExportSuccess('Conceptos')}
+                    />
+                )}
+            </div>
             
-             <SuccessToast 
+            <SuccessToast
                 isOpen={!!successInfo}
                 onClose={() => setSuccessInfo(null)}
                 title={successInfo?.title || ''}
                 message={successInfo?.message || ''}
             />
-            <ImportPreviewModal
-                isOpen={!!importPreview}
-                onClose={() => setImportPreview(null)}
-                onConfirm={() => importPreview?.onConfirm()}
-                fileName={importPreview?.fileName || ''}
-                sheets={importPreview?.sheets || []}
+            <ConfirmationModal
+                isOpen={isImportConfirmOpen}
+                onClose={() => setIsImportConfirmOpen(false)}
+                onConfirm={confirmImportAll}
+                title="Confirmar Importación Masiva"
+                message="¿Estás seguro de que quieres importar todos los catálogos? Esta acción reemplazará todos los datos existentes en los catálogos correspondientes."
             />
         </div>
     );
-};
+}

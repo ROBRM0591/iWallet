@@ -1,50 +1,22 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MonthlyBudget, MovementTypeName } from '../types';
+import { MonthlyBudget, MovementTypeName, Category } from '../types';
 import { DeleteIcon, CheckCircleIcon, EditIcon, PlusIcon, CloseIcon } from '../components/Icons';
 import { useAuth } from '../contexts/AuthContext';
-import { CsvTools, CsvHeader } from '../components/CsvTools';
 import { generateSequentialId } from '../components/utils';
 import { IconDisplay } from './IconDisplay';
+import { Modal, ConfirmationModal, SuccessToast } from './common/Portals';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
-const months = [
-    { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' }, { value: 2, label: 'Marzo' },
-    { value: 3, label: 'Abril' }, { value: 4, label: 'Mayo' }, { value: 5, label: 'Junio' },
-    { value: 6, label: 'Julio' }, { value: 7, label: 'Agosto' }, { value: 8, label: 'Septiembre' },
-    { value: 9, label: 'Octubre' }, { value: 10, label: 'Noviembre' }, { value: 11, label: 'Diciembre' }
-];
-const currentYear = new Date().getFullYear();
-const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
-
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
+    <div className={`bg-white/80 dark:bg-slate-800/60 backdrop-blur-xl rounded-2xl border border-white/30 dark:border-slate-700/80 shadow-2xl text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
-const SuccessToast: React.FC<{isOpen: boolean; onClose: () => void; title: string; message: string;}> = ({ isOpen, onClose, title, message }) => {
-    useEffect(() => {
-        if (isOpen) {
-            const timer = setTimeout(onClose, 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [isOpen, onClose]);
-    if (!isOpen) return null;
-    return (
-        <div className={`fixed bottom-4 left-4 z-50 w-full max-w-sm transition-all duration-300 ${isOpen ? 'transform translate-y-0 opacity-100' : 'transform translate-y-4 opacity-0'}`}>
-            {isOpen && (
-                 <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-gray-900 dark:text-white">
-                    <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center"><CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" /></div>
-                    <div><p className="font-bold">{title}</p><p className="text-sm text-gray-600 dark:text-gray-300">{message}</p></div>
-                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400">&times;</button>
-                </div>
-            )}
-        </div>
-    );
-};
-const SummaryCard: React.FC<{ title: string; amount: number; color: string; }> = ({ title, amount, color }) => (
-    <GlassCard className={`p-6 border-l-4 ${color}`}>
+
+const SummaryCard: React.FC<{ title: string; amount: number; className: string; }> = ({ title, amount, className }) => (
+    <GlassCard className={`p-4 sm:p-6 ${className}`}>
         <h3 className="text-sm font-medium text-gray-500 dark:text-gray-300">{title}</h3>
         <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{formatCurrency(amount)}</p>
     </GlassCard>
@@ -70,292 +42,296 @@ const BudgetCategoryItem: React.FC<{
     };
 
     return (
-        <div className="bg-gray-100/50 dark:bg-black/20 p-4 rounded-xl">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <IconDisplay icon={category.icon} iconColor={category.iconColor} className="w-6 h-6"/>
-                    <button onClick={onClick} className="font-bold text-lg hover:underline">{category.name}</button>
+        <div className="p-4 bg-gray-100 dark:bg-black/20 rounded-lg">
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-3 cursor-pointer" onClick={onClick}>
+                    <IconDisplay icon={category.icon} iconColor={category.iconColor} className="w-6 h-6" />
+                    <h4 className="font-bold hover:underline">{category.name}</h4>
                 </div>
                 <div className="flex items-center gap-2">
-                    {isEditing ? (
-                        <>
-                           <input
-                                type="number"
-                                value={newAmount || ''}
-                                onChange={(e) => setNewAmount(Number(e.target.value))}
-                                className="w-24 text-right rounded-md py-1"
-                                autoFocus
-                            />
-                            <button onClick={handleSave} className="text-green-500"><CheckCircleIcon className="w-6 h-6"/></button>
-                            <button onClick={() => setIsEditing(false)} className="text-gray-500"><CloseIcon className="w-6 h-6"/></button>
-                        </>
-                    ) : (
-                        <>
-                            <div className="text-right">
-                                <span className="font-semibold">{formatCurrency(spent)}</span>
-                                <span className="text-sm text-gray-500 dark:text-gray-400"> / {formatCurrency(budgeted)}</span>
-                            </div>
-                            <button onClick={() => { setIsEditing(true); setNewAmount(budgeted); }} className="text-primary-500"><EditIcon className="w-5 h-5"/></button>
-                            <button onClick={onDelete} className="text-red-500"><DeleteIcon className="w-5 h-5"/></button>
-                        </>
+                    {budgeted > 0 && (
+                        <button onClick={() => setIsEditing(!isEditing)} className="text-gray-500 dark:text-gray-400 hover:text-primary-500 p-1">
+                            {isEditing ? <CloseIcon className="w-5 h-5" /> : <EditIcon className="w-5 h-5" />}
+                        </button>
                     )}
+                    {budgeted > 0 && <button onClick={onDelete} className="text-gray-500 dark:text-gray-400 hover:text-red-500 p-1"><DeleteIcon className="w-5 h-5" /></button>}
                 </div>
             </div>
-            <div className="mt-2 h-4 w-full bg-gray-200 dark:bg-black/30 rounded-full">
-                <div className={`${progressBarColor} h-4 rounded-full transition-all duration-500`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
-            </div>
+            {isEditing ? (
+                <div className="mt-2 flex items-center gap-2">
+                    <input
+                        type="number"
+                        value={newAmount || ''}
+                        onChange={(e) => setNewAmount(Number(e.target.value))}
+                        className="w-full"
+                        autoFocus
+                    />
+                    <button onClick={handleSave} className="bg-primary-600 text-white rounded-md p-2"><CheckCircleIcon className="w-5 h-5" /></button>
+                </div>
+            ) : budgeted > 0 ? (
+                <div className="mt-2">
+                    <div className="flex justify-between text-sm mb-1">
+                        <span className="font-semibold text-gray-700 dark:text-gray-200">{formatCurrency(spent)}</span>
+                        <span className="text-gray-500 dark:text-gray-400">{formatCurrency(budgeted)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                        <div className={`${progressBarColor} h-3 rounded-full`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
+                    </div>
+                    <div className="text-right text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {progress > 100
+                            ? `${formatCurrency(spent - budgeted)} sobre el presupuesto`
+                            : `${formatCurrency(budgeted - spent)} restante`}
+                    </div>
+                </div>
+            ) : (
+                <div className="mt-2">
+                    <button onClick={() => setIsEditing(true)} className="w-full bg-gray-200 dark:bg-gray-700/50 hover:bg-gray-300 dark:hover:bg-gray-600/50 text-gray-600 dark:text-gray-300 font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
+                        <PlusIcon className="w-5 h-5" /> Añadir Presupuesto
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
 
+interface BudgetFormModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (categoryId: string, amount: number) => void;
+    unbudgetedCategories: Category[];
+}
+
+const BudgetFormModal: React.FC<BudgetFormModalProps> = ({ isOpen, onClose, onSave, unbudgetedCategories }) => {
+    const [categoryId, setCategoryId] = useState('');
+    const [amount, setAmount] = useState(0);
+    const [error, setError] = useState('');
+    
+    useEffect(() => {
+        if(unbudgetedCategories.length > 0) {
+            setCategoryId(unbudgetedCategories[0].id);
+        }
+    }, [unbudgetedCategories]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!categoryId || amount <= 0) {
+            setError('Por favor, seleccione una categoría y un monto mayor a cero.');
+            return;
+        }
+        setError('');
+        onSave(categoryId, amount);
+        setCategoryId(unbudgetedCategories.length > 1 ? unbudgetedCategories[1].id : '');
+        setAmount(0);
+        onClose();
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Añadir Nuevo Presupuesto">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium">Categoría</label>
+                    <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className="mt-1 block w-full rounded-md shadow-sm">
+                        {unbudgetedCategories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Monto Presupuestado</label>
+                    <input type="number" value={amount || ''} onChange={e => setAmount(Number(e.target.value))} className="mt-1 block w-full rounded-md shadow-sm" placeholder="Ej: 5000" />
+                </div>
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+                <div className="flex justify-end gap-4 pt-4">
+                    <button type="button" onClick={onClose} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">Guardar</button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+
 export const Budget: React.FC = () => {
-    const { appData: data, setData } = useAuth();
+    const { appData, setData } = useAuth();
     const navigate = useNavigate();
-    const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
-    const [addingBudgetId, setAddingBudgetId] = useState<string | null>(null);
-    const [newBudgetAmount, setNewBudgetAmount] = useState<number>(0);
-    const [selectedDate, setSelectedDate] = useState({
-        month: new Date().getMonth(),
-        year: new Date().getFullYear(),
-    });
+    const [successInfo, setSuccessInfo] = useState<{ title: string; message: string; } | null>(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [deleteInfo, setDeleteInfo] = useState<{ categoryId: string; categoryName: string } | null>(null);
 
-    if (!data) {
-        return <div>Cargando...</div>;
-    }
+    const { summary, budgetData, unbudgetedCategories } = useMemo(() => {
+        if (!appData) return { summary: { totalBudget: 0, totalSpent: 0, remaining: 0 }, budgetData: [], unbudgetedCategories: [] };
+        
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
 
-    const { expenseCategories, periodSpending, budgetsForPeriod } = useMemo(() => {
-        const movGasto = data.movementTypes.find(m => m.name === MovementTypeName.GASTO);
-        if (!movGasto) return { expenseCategories: [], periodSpending: new Map<string, number>(), budgetsForPeriod: [] };
-
-        const expenseCategories = data.categories.filter(c => c.movementTypeId === movGasto.id);
-
-        const startOfMonth = new Date(selectedDate.year, selectedDate.month, 1);
-        const endOfMonth = new Date(selectedDate.year, selectedDate.month + 1, 0, 23, 59, 59);
+        const startOfMonth = new Date(currentYear, currentMonth, 1);
+        const endOfMonth = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
 
         const periodSpending = new Map<string, number>();
-        const addExpense = (categoryId: string | undefined, amount: number) => {
-             if (categoryId) {
-                periodSpending.set(categoryId, (periodSpending.get(categoryId) || 0) + Number(amount));
-            }
-        };
 
-        data.dailyExpenses.forEach(expense => {
+        // Daily Expenses
+        appData.dailyExpenses.forEach(expense => {
             const expenseDate = new Date(expense.date);
             if (expenseDate >= startOfMonth && expenseDate <= endOfMonth) {
-                const concept = data.concepts.find(c => c.id === expense.conceptId);
-                addExpense(concept?.categoryId, expense.amount);
+                const concept = appData.concepts.find(c => c.id === expense.conceptId);
+                if (concept?.categoryId) {
+                    periodSpending.set(concept.categoryId, (periodSpending.get(concept.categoryId) || 0) + Number(expense.amount));
+                }
             }
         });
 
-        data.plannedExpenses.forEach(expense => {
+        // Planned Expenses Payments
+        appData.plannedExpenses.forEach(expense => {
             (expense.payments || []).forEach(payment => {
                 const paymentDate = new Date(payment.date);
-                 if (paymentDate >= startOfMonth && paymentDate <= endOfMonth) {
-                    const concept = data.concepts.find(c => c.id === expense.conceptId);
-                    addExpense(concept?.categoryId, payment.amount);
+                if (paymentDate >= startOfMonth && paymentDate <= endOfMonth) {
+                    const concept = appData.concepts.find(c => c.id === expense.conceptId);
+                    if (concept?.categoryId) {
+                        periodSpending.set(concept.categoryId, (periodSpending.get(concept.categoryId) || 0) + Number(payment.amount));
+                    }
                 }
             });
         });
+
+        const movGastoId = appData.movementTypes.find(m => m.name === MovementTypeName.GASTO)?.id;
+        const expenseCategories = appData.categories.filter(c => c.movementTypeId === movGastoId);
         
-        const budgetsForPeriod = data.monthlyBudgets.filter(b => b.month === selectedDate.month && b.year === selectedDate.year);
-
-        return { expenseCategories, periodSpending, budgetsForPeriod };
-    }, [data, selectedDate]);
-    
-    const summary = useMemo(() => {
-        // FIX: Operator '+' cannot be applied to types 'unknown' and 'number'. Removed redundant Number cast.
-        const totalBudgeted = budgetsForPeriod.reduce((sum: number, b: MonthlyBudget) => sum + b.amount, 0);
-        // FIX: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type. Removed redundant Number cast and added explicit types.
-        const totalSpent = Array.from(periodSpending.values()).reduce((sum: number, amount: number) => sum + amount, 0);
-        const totalRemaining = totalBudgeted - totalSpent;
-        return { totalBudgeted, totalSpent, totalRemaining };
-    }, [budgetsForPeriod, periodSpending]);
-
-    const handleBudgetChange = (categoryId: string, amount: number) => {
-        const existingBudgetIndex = data.monthlyBudgets.findIndex(b => 
-            b.categoryId === categoryId && b.month === selectedDate.month && b.year === selectedDate.year
+        const budgetedCategoryIds = new Set(
+            appData.monthlyBudgets
+                .filter(b => b.month === currentMonth && b.year === currentYear)
+                .map(b => b.categoryId)
         );
         
-        let newBudgets;
-        if (existingBudgetIndex > -1) {
-            newBudgets = data.monthlyBudgets.map((b, index) => 
-                index === existingBudgetIndex ? { ...b, amount } : b
-            );
-        } else {
-            const newId = generateSequentialId('PM', data.monthlyBudgets);
-            newBudgets = [...data.monthlyBudgets, { 
-                id: newId, 
-                categoryId, 
-                amount, 
-                month: selectedDate.month, 
-                year: selectedDate.year 
-            }];
+        const budgetItems = expenseCategories.map(category => {
+            const budget = appData.monthlyBudgets.find(b => b.categoryId === category.id && b.month === currentMonth && b.year === currentYear);
+            return {
+                category: { id: category.id, name: category.name, icon: category.icon, iconColor: category.iconColor },
+                spent: periodSpending.get(category.id) || 0,
+                budgeted: budget?.amount || 0,
+            };
+        });
+        
+        let totalBudget = 0;
+        let totalSpent = 0;
+        budgetItems.forEach(item => {
+            if (item.budgeted > 0) {
+                totalBudget += item.budgeted;
+                totalSpent += item.spent;
+            }
+        });
+
+        const unbudgeted = expenseCategories.filter(c => !budgetedCategoryIds.has(c.id));
+
+        return {
+            summary: { totalBudget, totalSpent, remaining: totalBudget - totalSpent },
+            budgetData: budgetItems,
+            unbudgetedCategories: unbudgeted,
+        };
+    }, [appData]);
+
+    const handleBudgetChange = (categoryId: string, newAmount: number) => {
+        if (!appData) return;
+        
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
+        let budgetFound = false;
+        const updatedBudgets = appData.monthlyBudgets.map(budget => {
+            if (budget.categoryId === categoryId && budget.month === currentMonth && budget.year === currentYear) {
+                budgetFound = true;
+                return { ...budget, amount: newAmount };
+            }
+            return budget;
+        });
+
+        if (!budgetFound) {
+            updatedBudgets.push({
+                id: generateSequentialId('PR', appData.monthlyBudgets),
+                categoryId,
+                amount: newAmount,
+                month: currentMonth,
+                year: currentYear
+            });
         }
-        setData({ ...data, monthlyBudgets: newBudgets });
+        
+        setData({ ...appData, monthlyBudgets: updatedBudgets });
+        setSuccessInfo({ title: 'Éxito', message: 'Presupuesto actualizado correctamente.'});
     };
     
-    const handleDeleteBudget = (categoryId: string) => {
-        setData({
-            ...data,
-            monthlyBudgets: data.monthlyBudgets.filter(b => 
-                !(b.categoryId === categoryId && b.month === selectedDate.month && b.year === selectedDate.year)
-            )
-        });
+    const handleDeleteRequest = (categoryId: string, categoryName: string) => {
+        setDeleteInfo({ categoryId, categoryName });
+    };
+
+    const handleConfirmDelete = () => {
+        if (!deleteInfo || !appData) return;
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const updatedBudgets = appData.monthlyBudgets.filter(b => 
+            !(b.categoryId === deleteInfo.categoryId && b.month === currentMonth && b.year === currentYear)
+        );
+        setData({ ...appData, monthlyBudgets: updatedBudgets });
+        setDeleteInfo(null);
     };
 
     const handleCategoryClick = (categoryId: string) => {
-        const categoryName = data.categories.find(c => c.id === categoryId)?.name;
-        if(categoryName) {
-            navigate('/reports', { 
-                state: { 
-                    filter: 'expenses', 
-                    categoryFilter: categoryName,
-                    month: selectedDate.month,
-                    year: selectedDate.year
-                } 
-            });
-        }
+        navigate('/reports', { state: { filter: 'expenses', categoryFilter: appData?.categories.find(c => c.id === categoryId)?.name }});
     };
     
-    const handleAddBudgetClick = (categoryId: string) => {
-        setAddingBudgetId(categoryId);
-        setNewBudgetAmount(0);
-    };
-
-    const handleSaveNewBudget = (categoryId: string) => {
-        if (newBudgetAmount > 0) {
-            handleBudgetChange(categoryId, newBudgetAmount);
-        }
-        setAddingBudgetId(null);
-    };
-
-    const handleCancelAddBudget = () => {
-        setAddingBudgetId(null);
-    };
-    
-    const handleImport = (importedData: any[]) => {
-        if (Array.isArray(importedData) && importedData.every(item => 'categoryId' in item && 'amount' in item && 'month' in item && 'year' in item)) {
-            const typedData = importedData.map(d => ({...d, amount: Number(d.amount), month: Number(d.month), year: Number(d.year) })) as MonthlyBudget[];
-            
-            const otherMonthsBudgets = data.monthlyBudgets.filter(existing => 
-                !typedData.some(imported => imported.month === existing.month && imported.year === existing.year)
-            );
-            
-            const mergedBudgets = [...otherMonthsBudgets, ...typedData];
-            setData({ ...data, monthlyBudgets: mergedBudgets });
-
-            setSuccessInfo({ title: 'Importación Exitosa', message: `${typedData.length} presupuestos importados.` });
-        } else {
-             alert('Error: El archivo CSV no tiene el formato correcto. Debe incluir "categoryId", "amount", "month", y "year".');
-        }
-    };
-    
-    const budgetHeaders: CsvHeader<MonthlyBudget>[] = [
-        { key: 'id', label: 'ID' },
-        { key: 'categoryId', label: 'ID Categoría' },
-        { key: 'amount', label: 'Monto' },
-        { key: 'month', label: 'Mes' },
-        { key: 'year', label: 'Año' }
-    ];
-
     return (
-        <div>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Presupuesto Mensual</h1>
-                <div className="flex items-center gap-2 bg-gray-100 dark:bg-black/20 p-1.5 rounded-lg">
-                    <select value={selectedDate.month} onChange={(e) => setSelectedDate(prev => ({ ...prev, month: Number(e.target.value) }))} className="border border-gray-300 dark:border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
-                        {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                    <select value={selectedDate.year} onChange={(e) => setSelectedDate(prev => ({ ...prev, year: Number(e.target.value) }))} className="border border-gray-300 dark:border-white/20 rounded-md py-1 px-2 text-sm font-semibold">
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                </div>
+        <div className="space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h1 className="text-3xl font-bold">Presupuesto Mensual</h1>
+                {unbudgetedCategories.length > 0 && (
+                    <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                        <PlusIcon className="w-5 h-5" />
+                        Añadir Presupuesto
+                    </button>
+                )}
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                <SummaryCard title="Total Presupuestado" amount={summary.totalBudgeted} color="border-primary-500" />
-                <SummaryCard title="Total Gastado" amount={summary.totalSpent} color="border-red-500" />
-                <SummaryCard title="Restante Total" amount={summary.totalRemaining < 0 ? 0 : summary.totalRemaining} color={summary.totalRemaining < 0 ? 'border-yellow-500' : 'border-green-500'} />
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <SummaryCard title="Total Presupuestado" amount={summary.totalBudget} className="bg-blue-100 dark:bg-blue-900/50" />
+                <SummaryCard title="Total Gastado" amount={summary.totalSpent} className="bg-red-100 dark:bg-red-900/50" />
+                <SummaryCard title="Restante General" amount={summary.remaining} className="bg-green-100 dark:bg-green-900/50" />
             </div>
-
-            <GlassCard className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Presupuesto por Categoría</h2>
-                    <CsvTools
-                        entityName={`Presupuestos-${selectedDate.year}-${months[selectedDate.month].label}`}
-                        items={budgetsForPeriod}
-                        headers={budgetHeaders}
-                        onImport={handleImport}
-                        onExportSuccess={() => setSuccessInfo({ title: 'Exportación Exitosa', message: 'Tu presupuesto ha sido exportado.' })}
-                    />
-                </div>
-                 <div className="space-y-4">
-                    {expenseCategories.length > 0 ? (
-                        expenseCategories.map(category => {
-                            const budget = budgetsForPeriod.find(b => b.categoryId === category.id);
-                            const spent = periodSpending.get(category.id) || 0;
-
-                            if (budget) {
-                                return (
-                                    <BudgetCategoryItem
-                                        key={category.id}
-                                        category={category}
-                                        spent={spent}
-                                        budgeted={Number(budget.amount)}
-                                        onBudgetChange={(amount) => handleBudgetChange(category.id, amount)}
-                                        onDelete={() => handleDeleteBudget(category.id)}
-                                        onClick={() => handleCategoryClick(category.id)}
-                                    />
-                                );
-                            } else if (addingBudgetId === category.id) {
-                                return (
-                                    <div key={category.id} className="bg-gray-100/50 dark:bg-black/20 p-4 rounded-xl">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex items-center gap-3">
-                                                <IconDisplay icon={category.icon} iconColor={category.iconColor} className="w-6 h-6"/>
-                                                <span className="font-bold text-lg">{category.name}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="number"
-                                                    value={newBudgetAmount || ''}
-                                                    onChange={(e) => setNewBudgetAmount(Number(e.target.value))}
-                                                    className="w-24 text-right rounded-md py-1"
-                                                    placeholder="Monto"
-                                                    autoFocus
-                                                />
-                                                <button onClick={() => handleSaveNewBudget(category.id)} className="text-green-500"><CheckCircleIcon className="w-6 h-6"/></button>
-                                                <button onClick={handleCancelAddBudget} className="text-gray-500"><CloseIcon className="w-6 h-6"/></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            } else {
-                                return (
-                                    <div key={category.id} className="bg-gray-100/50 dark:bg-black/20 p-4 rounded-xl">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex items-center gap-3">
-                                                 <IconDisplay icon={category.icon} iconColor={category.iconColor} className="w-6 h-6"/>
-                                                 <button onClick={() => handleCategoryClick(category.id)} className="font-bold text-lg hover:underline">{category.name}</button>
-                                            </div>
-                                            <button onClick={() => handleAddBudgetClick(category.id)} className="flex items-center gap-1 text-sm text-primary-600 dark:text-primary-400 font-semibold">
-                                                <PlusIcon className="w-4 h-4"/> Añadir Presupuesto
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            }
-                        })
-                    ) : (
-                        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                            <p>No hay categorías de gastos para presupuestar.</p>
-                            <p className="text-sm">Ve a <button className="underline" onClick={() => navigate('/catalogs')}>Catálogos</button> para añadirlas.</p>
-                        </div>
-                    )}
+            
+            <GlassCard className="p-4 sm:p-6">
+                <h2 className="text-xl font-bold mb-4">Presupuesto por Categoría</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {budgetData.map(({ category, spent, budgeted }) => (
+                        <BudgetCategoryItem 
+                            key={category.id}
+                            category={category}
+                            spent={spent}
+                            budgeted={budgeted}
+                            onBudgetChange={(newAmount) => handleBudgetChange(category.id, newAmount)}
+                            onDelete={() => handleDeleteRequest(category.id, category.name)}
+                            onClick={() => handleCategoryClick(category.id)}
+                        />
+                    ))}
                 </div>
             </GlassCard>
 
-            <SuccessToast 
+            <BudgetFormModal 
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onSave={handleBudgetChange}
+                unbudgetedCategories={unbudgetedCategories}
+            />
+
+            <ConfirmationModal
+                isOpen={!!deleteInfo}
+                onClose={() => setDeleteInfo(null)}
+                onConfirm={handleConfirmDelete}
+                title={`Eliminar Presupuesto`}
+                message={`¿Estás seguro de que quieres eliminar el presupuesto para la categoría "${deleteInfo?.categoryName}" de este mes?`}
+            />
+            
+            <SuccessToast
                 isOpen={!!successInfo}
                 onClose={() => setSuccessInfo(null)}
                 title={successInfo?.title || ''}

@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { AppData } from '../types';
 import { GoogleGenAI } from '@google/genai';
-import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, SparklesIcon } from './Icons';
+import { PaperAirplaneIcon, SparklesIcon, ClipboardIcon, CheckIcon } from './Icons';
 import { toDateKey } from './utils';
 
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
+    <div className={`bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-2xl border border-white/30 dark:border-slate-700/80 shadow-2xl text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
@@ -38,20 +38,108 @@ interface Message {
     content: string;
 }
 
-export const ChatHistory: React.FC = () => {
+const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
+    const renderInline = (text: string) => {
+        const parts = text.split(/(\*\*.*?\*\*|__.*?__)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={i}>{part.slice(2, -2)}</strong>;
+            }
+            if (part.startsWith('__') && part.endsWith('__')) {
+                return <strong key={i}>{part.slice(2, -2)}</strong>;
+            }
+            return part;
+        });
+    };
+
+    const blocks = content.split('\n\n');
+
+    const elements = blocks.flatMap((block, blockIndex) => {
+        const lines = block.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) return [];
+
+        // Check for table
+        if (lines.length > 1 && lines.every(l => l.trim().startsWith('|'))) {
+            const headerLine = lines[0];
+            const separatorLine = lines[1];
+            if (!separatorLine.includes('---')) return [<p key={blockIndex}>{renderInline(block)}</p>];
+
+            const headers = headerLine.trim().slice(1, -1).split('|').map(h => h.trim());
+            const rows = lines.slice(2).map((rowLine, rowIndex) => {
+                const cells = rowLine.trim().slice(1, -1).split('|').map(c => c.trim());
+                return (
+                    <tr key={rowIndex} className="border-b border-gray-300 dark:border-slate-600">
+                        {cells.map((cell, cellIndex) => <td key={cellIndex} className="p-2">{renderInline(cell)}</td>)}
+                    </tr>
+                );
+            });
+
+            return [(
+                <div key={blockIndex} className="my-3 overflow-x-auto">
+                    <table className="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr className="border-b-2 border-gray-400 dark:border-slate-500">
+                                {headers.map((header, headerIndex) => <th key={headerIndex} className="p-2 font-semibold">{renderInline(header)}</th>)}
+                            </tr>
+                        </thead>
+                        <tbody>{rows}</tbody>
+                    </table>
+                </div>
+            )];
+        }
+
+        // Check for lists (can be multiline)
+        if (lines.every(l => l.trim().startsWith('* ') || l.trim().startsWith('- '))) {
+            const listItems = lines.map((line, i) => <li key={i}>{renderInline(line.trim().substring(2))}</li>);
+            return [<ul key={blockIndex} className="list-disc list-inside space-y-1 my-2 pl-4">{listItems}</ul>];
+        }
+        if (lines.every(l => l.trim().match(/^\d+\.\s/))) {
+            const listItems = lines.map((line, i) => <li key={i}>{renderInline(line.trim().replace(/^\d+\.\s/, ''))}</li>);
+            return [<ol key={blockIndex} className="list-decimal list-inside space-y-1 my-2 pl-4">{listItems}</ol>];
+        }
+
+        // Default to paragraphs for the block
+        const paragraphs = block.split('\n').map((line, lineIndex) => (
+            <p key={lineIndex}>{renderInline(line)}</p>
+        ));
+        return paragraphs;
+    });
+
+    return <div className="text-sm space-y-3">{elements}</div>;
+};
+
+interface AIAssistantProps {
+    isOpen: boolean;
+}
+
+export const ChatHistory: React.FC<AIAssistantProps> = ({ isOpen }) => {
     const { appData } = useAuth();
     const [messages, setMessages] = useState<Message[]>([
-        { role: 'assistant', content: '¡Hola! Soy tu asistente financiero. Puedes preguntarme sobre tus gastos, ingresos, presupuestos y más. Por ejemplo: "¿Cuánto gasté en comida este mes?" o "¿Cuál es mi próximo gasto planificado a vencer?"' }
+        { role: 'assistant', content: '¡Hola! Soy tu asistente financiero. Puedes preguntarme sobre tus gastos, ingresos, presupuestos y más.\nPor ejemplo:\n* ¿Cuánto gasté en comida este mes?\n* ¿Cuál es mi próximo gasto planificado a vencer?' }
     ]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
 
-    useEffect(scrollToBottom, [messages]);
+    useEffect(() => {
+        if (isOpen) {
+            scrollToBottom();
+        }
+    }, [isOpen, messages]);
+
+    const handleCopy = (content: string, index: number) => {
+        navigator.clipboard.writeText(content).then(() => {
+            setCopiedMessageId(`msg-${index}`);
+            setTimeout(() => setCopiedMessageId(null), 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+    };
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,8 +159,12 @@ export const ChatHistory: React.FC = () => {
                 Tu tarea es analizar los datos financieros del usuario (en formato JSON) y responder a sus preguntas de manera clara, concisa y amigable.
                 Tus respuestas DEBEN basarse únicamente en los datos proporcionados. Si la información no está en los datos, indica que no tienes acceso a esa información.
                 La fecha actual es ${toDateKey(new Date())}.
-                Todas las cantidades monetarias están en Pesos Mexicanos (MXN).
-                Al responder, sé directo y útil. Si es apropiado, puedes usar listas de viñetas. Tu respuesta debe estar en español.
+
+                **REGLAS DE FORMATO IMPORTANTES:**
+                1.  **Moneda:** TODAS las cantidades monetarias deben estar en Pesos Mexicanos (MXN). Usa el formato "$1,234.56 MXN".
+                2.  **Tablas y Listas:** Cuando presentes datos tabulares (como una lista de gastos con montos y fechas), USA tablas de Markdown para una visualización clara. Para otros desgloses, usa listas de viñetas (*).
+                3.  **Idioma:** Tu respuesta debe estar completamente en español.
+                4.  **Markdown:** Usa formato markdown simple (listas con *, negritas con **, tablas).
 
                 DATOS FINANCIEROS DEL USUARIO (extracto reciente):
                 ${dataContext}
@@ -97,12 +189,21 @@ export const ChatHistory: React.FC = () => {
             setIsLoading(false);
         }
     };
+
+    if (!isOpen) {
+        return null;
+    }
     
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Asistente AI</h1>
-            <GlassCard className="h-[70vh] flex flex-col p-4">
-                <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+        <div className="fixed bottom-36 right-4 md:bottom-24 md:right-6 z-40 w-[calc(100vw-2rem)] max-w-sm md:max-w-md lg:max-w-lg h-[65vh] md:h-[70vh] max-h-[520px] md:max-h-[700px] animate-fadeInUp">
+            <GlassCard className="h-full flex flex-col">
+                <div className="p-4 border-b border-gray-200 dark:border-white/10">
+                    <h2 className="text-lg font-bold flex items-center gap-2">
+                        <SparklesIcon className="w-5 h-5 text-primary-500" />
+                        Asistente AI
+                    </h2>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {messages.map((msg, index) => (
                         <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                             {msg.role === 'assistant' && (
@@ -110,8 +211,27 @@ export const ChatHistory: React.FC = () => {
                                     <SparklesIcon className="w-5 h-5 text-primary-500" />
                                 </div>
                             )}
-                            <div className={`max-w-md p-3 rounded-2xl ${msg.role === 'user' ? 'bg-primary-600 text-white rounded-br-none' : 'bg-gray-100 dark:bg-black/20 rounded-bl-none'}`}>
-                                <p className="text-sm" style={{whiteSpace: "pre-wrap"}}>{msg.content}</p>
+                            <div className={`relative max-w-md p-3 rounded-2xl group ${msg.role === 'user' ? 'bg-primary-600 text-white rounded-br-none' : 'bg-slate-200/50 dark:bg-slate-800/50 rounded-bl-none'}`}>
+                                {msg.role === 'assistant' ? (
+                                    <MarkdownRenderer content={msg.content} />
+                                ) : (
+                                    <p className="text-sm">{msg.content}</p>
+                                )}
+                                {msg.role === 'assistant' && (
+                                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                            onClick={() => handleCopy(msg.content, index)} 
+                                            className="p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-slate-700 transition"
+                                            aria-label="Copiar respuesta"
+                                        >
+                                            {copiedMessageId === `msg-${index}` ? (
+                                                <CheckIcon className="w-4 h-4 text-green-500" />
+                                            ) : (
+                                                <ClipboardIcon className="w-4 h-4" />
+                                            )}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -120,7 +240,7 @@ export const ChatHistory: React.FC = () => {
                             <div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center flex-shrink-0">
                                 <SparklesIcon className="w-5 h-5 text-primary-500 animate-pulse" />
                             </div>
-                            <div className="max-w-md p-3 rounded-2xl bg-gray-100 dark:bg-black/20 rounded-bl-none">
+                            <div className="max-w-md p-3 rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 rounded-bl-none">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
@@ -131,13 +251,13 @@ export const ChatHistory: React.FC = () => {
                     )}
                     <div ref={messagesEndRef} />
                 </div>
-                <div className="mt-4 border-t border-gray-200 dark:border-white/20 pt-4">
+                <div className="mt-auto border-t border-gray-200 dark:border-white/20 p-4">
                     <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                         <input
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="Pregúntale a tu asistente financiero..."
+                            placeholder="Pregúntale a tu asistente..."
                             className="flex-1 w-full px-4 py-2 rounded-full shadow-sm"
                             disabled={isLoading}
                         />

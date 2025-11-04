@@ -15,7 +15,7 @@ interface Calculator {
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
+    <div className={`bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl rounded-2xl border border-white/30 dark:border-slate-700/80 shadow-2xl text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
@@ -77,7 +77,7 @@ interface CalculatorCardProps {
 
 const CalculatorCard: React.FC<CalculatorCardProps> = ({ calculator, concepts, onUpdate, onDelete }) => {
     return (
-        <GlassCard className="p-6 relative">
+        <GlassCard className="p-4 sm:p-6 relative">
             <button onClick={() => onDelete(calculator.id)} className="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400">
                 <DeleteIcon className="w-5 h-5" />
             </button>
@@ -158,7 +158,7 @@ export const DebtCalculator: React.FC = () => {
                 </button>
             </div>
             
-            <GlassCard className="bg-primary-100 dark:bg-primary-900/30 p-6 flex flex-col justify-center items-center mb-8">
+            <GlassCard className="bg-gradient-to-br from-primary-100 to-primary-200 dark:from-slate-900/70 dark:to-slate-800/70 p-4 sm:p-6 flex flex-col justify-center items-center mb-8">
                 <h2 className="text-2xl font-bold mb-4">Resumen Total</h2>
                  {summary.error ? (
                     <p className="text-center text-yellow-500 dark:text-yellow-300">{summary.error}</p>
@@ -168,7 +168,7 @@ export const DebtCalculator: React.FC = () => {
                     <div className="w-full">
                         <div className="text-center mb-4">
                             <p className="text-lg text-primary-700 dark:text-primary-200">Tiempo para liquidar todas las deudas</p>
-                            <p className="text-4xl font-bold">
+                            <p className="text-3xl sm:text-4xl font-bold">
                                 {isFinite(summary.months) ? `${years} años y ${remainingMonths} meses` : 'Interminable'}
                             </p>
                         </div>

@@ -1,15 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AppData } from '../types';
-import { DEMO_DATA } from '../constants';
+import { BLANK_DATA, DEMO_DATA } from '../constants';
 import { hashString } from '../utils/crypto';
 
-interface UserProfile {
+export interface UserProfile {
     username: string;
     email: string;
     pinHash: string;
     securityAnswer1Hash: string;
     securityAnswer2Hash: string;
     avatar?: string;
+    sectionIcons?: Record<string, string>;
+    sectionNames?: Record<string, string>;
+    summaryCardIcons?: Record<string, string>;
+    summaryCardNames?: Record<string, string>;
+    catalogSectionIcons?: Record<string, { icon: string; color: string; }>;
+    catalogSectionNames?: Record<string, string>;
 }
 
 interface AuthContextType {
@@ -23,6 +29,8 @@ interface AuthContextType {
     setupAccount: (profile: any, initialData: AppData) => Promise<void>;
     verifySecurityAnswers: (answers: { answer1: string, answer2: string }) => Promise<boolean>;
     recoverPin: (answers: { answer1: string, answer2: string }, newPin: string) => Promise<boolean>;
+    deleteAccount: () => void;
+    updateUserProfile: (updates: Partial<UserProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,7 +51,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
             
             if (storedData && storedData !== "undefined") {
-                setAppData(JSON.parse(storedData));
+                const parsedData = JSON.parse(storedData);
+                const finalData = { ...BLANK_DATA, ...parsedData };
+
+                // If core catalogs are empty after merging, it means user data was missing them or had them empty.
+                // Restore them from BLANK_DATA to maintain app functionality (e.g., filtering concepts by type).
+                if (!finalData.movementTypes || finalData.movementTypes.length === 0) {
+                    finalData.movementTypes = BLANK_DATA.movementTypes;
+                }
+                if (!finalData.costTypes || finalData.costTypes.length === 0) {
+                    finalData.costTypes = BLANK_DATA.costTypes;
+                }
+
+                setAppData(finalData);
             } else if (!storedProfile) {
                 // If there's no profile (first time setup), we don't load any data yet
                 setAppData(null);
@@ -105,7 +125,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             pinHash,
             securityAnswer1Hash,
             securityAnswer2Hash,
-            avatar: `https://i.pravatar.cc/80?u=${profile.email}`
+            avatar: `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzRhNGE0YSI+CiAgPHBhdGggZD0iTTEyIDEyYzIuMjEgMCA0LTEuNzkgNC00cy0xLjc5LTQtNC00LTQgMS43OS00IDQgMS43OSA0IDQgNHptMCAyYy0yLjY3IDAtOCAxLjM0LTggNHYyaDE2di0yYzAtMi42Ni01LjMzLTQtOC00eiIvPgo8L3N2Zz4=`,
+            sectionIcons: {},
+            sectionNames: {},
+            summaryCardIcons: {},
+            summaryCardNames: {},
+            catalogSectionIcons: {},
+            catalogSectionNames: {},
         };
         
         setUserProfile(newUserProfile);
@@ -132,6 +158,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return false;
     };
 
+    const deleteAccount = () => {
+        localStorage.removeItem('userProfile');
+        localStorage.removeItem('appData');
+        setUserProfile(null);
+        setAppData(null);
+        setIsAuthenticated(false);
+    };
+
+    const updateUserProfile = (updates: Partial<UserProfile>) => {
+        if (userProfile) {
+            const newProfile = { ...userProfile, ...updates };
+            setUserProfile(newProfile);
+        }
+    };
+
 
     const value: AuthContextType = { 
         appData, 
@@ -143,7 +184,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         setupAccount,
         verifySecurityAnswers,
-        recoverPin
+        recoverPin,
+        deleteAccount,
+        updateUserProfile,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

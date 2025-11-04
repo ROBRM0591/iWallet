@@ -71,14 +71,14 @@ export const RecoverPin: React.FC = () => {
                 <WalletIcon className="h-12 w-12 text-primary-500 dark:text-primary-400" />
                 <h1 className="text-3xl font-bold ml-3 text-gray-900 dark:text-white">iWallet</h1>
             </div>
-            <div className="w-full max-w-md bg-white dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-xl p-8">
+            <div className="w-full max-w-md bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl rounded-2xl border border-white/30 dark:border-slate-700/80 shadow-2xl text-gray-900 dark:text-white p-8">
                 {step === 1 ? (
                     <>
                         <h2 className="text-2xl font-bold text-center mb-2">Recuperar PIN</h2>
                         <p className="text-center text-gray-600 dark:text-gray-300 mb-6">Responde tus preguntas de seguridad.</p>
                         <form onSubmit={handleVerifyAnswers} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">¿En qué fecha inició el noviazgo con tu esposa?</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Ingresa Fecha Importante</label>
                                 <input type="date" name="answer1" value={answers.answer1} onChange={handleAnswerChange} className="mt-1 w-full px-4 py-2 rounded-md" required />
                             </div>
                             <div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+// FIX: Import MainLayout as a named import.
 import { MainLayout } from './components/MainLayout';
 import { WalletIcon } from './components/Icons';
 import { Dashboard } from './components/Dashboard';
@@ -14,10 +15,10 @@ import { Reports } from './components/Reports';
 import { DebtCalculator } from './components/DebtCalculator';
 import { UserManual } from './components/UserManual';
 import { Settings } from './components/Settings';
-import { ChatHistory } from './components/ChatHistory';
 import { Setup } from './components/auth/Setup';
 import { Login } from './components/auth/Login';
 import { RecoverPin } from './components/auth/RecoverPin';
+import { DataManagement } from './components/DataManagement';
 
 const LoadingScreen: React.FC = () => (
     <div className="flex flex-col justify-center items-center h-screen bg-slate-50 dark:bg-slate-900">
@@ -61,15 +62,15 @@ const AppRoutes: React.FC = () => {
                 <Route index element={<Dashboard />} />
                 <Route path="incomes" element={<Incomes />} />
                 <Route path="daily-expenses" element={<DailyExpenses />} />
-                <Route path="catalogs" element={<Catalogs />} />
-                <Route path="budget" element={<Budget />} />
                 <Route path="planned-expenses" element={<PlannedExpenses />} />
+                <Route path="budget" element={<Budget />} />
                 <Route path="savings-goals" element={<SavingsGoals />} />
+                <Route path="catalogs" element={<Catalogs />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="debt-calculator" element={<DebtCalculator />} />
+                <Route path="data" element={<DataManagement />} />
                 <Route path="manual" element={<UserManual />} />
                 <Route path="settings" element={<Settings />} />
-                <Route path="ai-assistant" element={<ChatHistory />} />
             </Route>
             {/* Si un usuario autenticado intenta acceder a rutas públicas, redirigir a la página principal */}
             <Route path="/login" element={<Navigate to="/" replace />} />

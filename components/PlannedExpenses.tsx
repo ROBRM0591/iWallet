@@ -1,99 +1,29 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
-import { AppData, PlannedExpense, Frequency, Concept, Payment, Priority } from '../types';
-import { CloseIcon, PlusIcon, EditIcon, DeleteIcon, WarningIcon, CheckCircleIcon, DownloadIcon, ListBulletIcon, PlannedExpenseIcon as CalendarIcon, CurrencyDollarIcon, ChevronDownIcon } from './Icons';
+import { AppData, PlannedExpense, Frequency, Concept, Payment, Priority, MovementTypeName } from '../types';
+import { PlusIcon, EditIcon, DeleteIcon, CheckCircleIcon, ListBulletIcon, CurrencyDollarIcon, ChevronDownIcon, WalletIcon, TrendingUpIcon, TrendingDownIcon, ClockIcon } from './Icons';
 import { generatePeriods, getNextPeriodToPay, generateSequentialId, getStatusInfo, toDateKey } from './utils';
 import { IconPicker } from './IconPicker';
-import { IconDisplay } from './IconDisplay';
+import { IconDisplay, PREDEFINED_ICONS } from './IconDisplay';
 import { useAuth } from '../contexts/AuthContext';
 import { CalendarGrid } from './CalendarGrid';
+import { Modal, ConfirmationModal, SuccessToast } from './common/Portals';
 
-declare const XLSX: any;
+export const PlannedExpenseIcon: React.FC<{className?: string}> = ({ className }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M12 12.75h.008v.008H12v-.008z" />
+    </svg>
+);
+// FIX: Changed re-export syntax to direct const assignment to avoid potential compiler issues.
+export const CalendarIcon = PlannedExpenseIcon;
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(value);
 
-const priorityOrder: { [key in Priority]: number } = {
-    [Priority.BAJA]: 1,
-    [Priority.MEDIA]: 2,
-    [Priority.ALTA]: 3,
-};
-
 const GlassCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-    <div className={`bg-white dark:bg-black/20 dark:backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/20 shadow-lg text-gray-900 dark:text-white ${className}`}>
+    <div className={`bg-white/90 dark:bg-slate-800/80 backdrop-blur-lg rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg text-gray-900 dark:text-white ${className}`}>
         {children}
     </div>
 );
-
-// Modal, ConfirmationModal, and SuccessToast components
-const Modal: React.FC<{ isOpen: boolean, onClose: () => void, title: string, children: React.ReactNode }> = ({ isOpen, onClose, title, children }) => {
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
-        if (isOpen) document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 text-gray-900 dark:text-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all">
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-white/20">
-                    <h3 className="text-xl font-bold">{title}</h3>
-                    <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">
-                        <CloseIcon className="w-6 h-6" />
-                    </button>
-                </div>
-                <div className="p-6 max-h-[80vh] overflow-y-auto">{children}</div>
-            </div>
-        </div>
-    );
-};
-
-const ConfirmationModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void; title: string; message: string; }> = ({ isOpen, onClose, onConfirm, title, message }) => {
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        if (isOpen) document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-            <div className="bg-white dark:bg-gray-800 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-2xl w-full max-w-md m-4 text-center p-6 text-gray-900 dark:text-white">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/50"><WarningIcon className="h-6 w-6 text-red-600 dark:text-red-300" /></div>
-                <h3 className="text-lg font-bold mt-4">{title}</h3>
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p>
-                <div className="mt-6 flex justify-center gap-4">
-                    <button onClick={onClose} className="bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button onClick={() => { onConfirm(); onClose(); }} className="bg-red-600 hover:bg-red-700 font-bold py-2 px-4 rounded-lg">Confirmar</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const SuccessToast: React.FC<{ isOpen: boolean; onClose: () => void; title: string; message: string; }> = ({ isOpen, onClose, title, message }) => {
-    useEffect(() => {
-        if (isOpen) {
-            const timer = setTimeout(onClose, 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [isOpen, onClose]);
-    if (!isOpen) return null;
-    return (
-        <div className="fixed bottom-4 left-4 z-50 w-full max-w-sm transition-all duration-300 transform translate-y-0 opacity-100">
-            <div className="bg-white/80 dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-xl shadow-2xl p-4 flex items-start gap-4 text-gray-900 dark:text-white">
-                <div className="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center"><CheckCircleIcon className="h-6 w-6 text-green-600 dark:text-green-300" /></div>
-                <div className="flex-grow">
-                    <p className="font-bold">{title}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
-                </div>
-                <button onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200">&times;</button>
-            </div>
-        </div>
-    );
-};
 
 const PlannedExpenseForm: React.FC<{
     item: Partial<PlannedExpense> | null;
@@ -106,37 +36,50 @@ const PlannedExpenseForm: React.FC<{
 }> = ({ item, concepts, onSave, onCancel, data, setData, defaultActiveTab }) => {
     const [activeTab, setActiveTab] = useState<'details' | 'periods' | 'payments'>(defaultActiveTab || 'details');
     
-    const currentItem = useMemo(() => {
-        if (!item?.id || !data) return item;
-        return data.plannedExpenses.find(pe => pe.id === item.id) || item;
-    }, [data.plannedExpenses, item]);
+    const [formState, setFormState] = useState({
+        conceptId: '',
+        icon: 'tag',
+        iconColor: 'text-gray-900 dark:text-white',
+        amountPerPeriod: 0,
+        startPeriod: new Date().toISOString().slice(0, 7),
+        frequency: Frequency.MENSUAL,
+        periods: 12,
+        cutOffDay: 15,
+        dueDay: 30,
+        reminderDays: data.notifications.defaultReminderDays,
+        reminderTime: data.notifications.defaultReminderTime,
+    });
+    const [periodOverrides, setPeriodOverrides] = useState<Record<string, number>>({});
+
+    useEffect(() => {
+        setFormState({
+            conceptId: item?.conceptId || '',
+            icon: item?.icon || 'tag',
+            iconColor: item?.iconColor || 'text-gray-900 dark:text-white',
+            amountPerPeriod: item?.amountPerPeriod || 0,
+            startPeriod: item?.startPeriod || new Date().toISOString().slice(0, 7),
+            frequency: item?.frequency || Frequency.MENSUAL,
+            periods: item?.periods || 12,
+            cutOffDay: item?.cutOffDay || 15,
+            dueDay: item?.dueDay || 30,
+            reminderDays: item?.reminderDays ?? data.notifications.defaultReminderDays,
+            reminderTime: item?.reminderTime ?? data.notifications.defaultReminderTime,
+        });
+        setPeriodOverrides(item?.periodOverrides || {});
+    }, [item, data.notifications]);
+
 
     const paymentsByPeriod = useMemo(() => {
-        if (!currentItem?.payments) return new Map<string, number>();
+        if (!item?.payments) return new Map<string, number>();
         const map = new Map<string, number>();
-        (currentItem.payments || []).forEach(p => {
+        (item.payments || []).forEach(p => {
             map.set(p.period, (map.get(p.period) || 0) + Number(p.amount));
         });
         return map;
-    }, [currentItem?.payments]);
+    }, [item?.payments]);
 
-    const [formState, setFormState] = useState({
-        conceptId: currentItem?.conceptId || '',
-        icon: currentItem?.icon || 'tag',
-        iconColor: currentItem?.iconColor || 'text-gray-900 dark:text-white',
-        amountPerPeriod: currentItem?.amountPerPeriod || 0,
-        startPeriod: currentItem?.startPeriod || new Date().toISOString().slice(0, 7),
-        frequency: currentItem?.frequency || Frequency.MENSUAL,
-        periods: currentItem?.periods || 12,
-        cutOffDay: currentItem?.cutOffDay || 15,
-        dueDay: currentItem?.dueDay || 30,
-        reminderDays: currentItem?.reminderDays ?? data.notifications.defaultReminderDays,
-        reminderTime: currentItem?.reminderTime ?? data.notifications.defaultReminderTime,
-    });
-    const [periodOverrides, setPeriodOverrides] = useState<Record<string, number>>(currentItem?.periodOverrides || {});
 
-    const [isIconPickerOpen, setIconPickerOpen] = useState(false);
-    const iconPickerContainerRef = useRef<HTMLDivElement>(null);
+    const [iconPickerAnchor, setIconPickerAnchor] = useState<HTMLButtonElement | null>(null);
     const [paymentAmount, setPaymentAmount] = useState<number>(0);
     const todayISO = toDateKey(new Date());
     const [paymentDate, setPaymentDate] = useState(todayISO);
@@ -144,38 +87,28 @@ const PlannedExpenseForm: React.FC<{
     const [paymentRemaining, setPaymentRemaining] = useState(0);
     const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({});
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (iconPickerContainerRef.current && !iconPickerContainerRef.current.contains(event.target as Node)) {
-                setIconPickerOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     const availablePeriodsToPay = useMemo(() => {
-        if (!currentItem) return [];
-        const allPeriods = generatePeriods(currentItem as PlannedExpense);
+        if (!item) return [];
+        const allPeriods = generatePeriods(item as PlannedExpense);
         const paymentsByPeriod = new Map<string, number>();
 
-        (currentItem.payments || []).forEach(p => {
+        (item.payments || []).forEach(p => {
             paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + Number(p.amount));
         });
 
         return allPeriods.filter(period => {
             const paidAmount = paymentsByPeriod.get(period) || 0;
-            const amountForPeriod = (currentItem as PlannedExpense).periodOverrides?.[period] ?? (currentItem as PlannedExpense).amountPerPeriod;
+            const amountForPeriod = (item as PlannedExpense).periodOverrides?.[period] ?? (item as PlannedExpense).amountPerPeriod;
             return paidAmount < Number(amountForPeriod);
         });
-    }, [currentItem]);
+    }, [item]);
     
      useEffect(() => {
-        if (paymentPeriod && currentItem) {
-            const paidInPeriod = (currentItem.payments || [])
+        if (paymentPeriod && item) {
+            const paidInPeriod = (item.payments || [])
                 .filter(p => p.period === paymentPeriod)
                 .reduce((sum, p) => sum + Number(p.amount), 0);
-            const amountForPeriod = Number(currentItem.periodOverrides?.[paymentPeriod] ?? currentItem.amountPerPeriod);
+            const amountForPeriod = Number(item.periodOverrides?.[paymentPeriod] ?? item.amountPerPeriod);
             const remaining = amountForPeriod - paidInPeriod;
             setPaymentRemaining(remaining);
             setPaymentAmount(remaining > 0 ? remaining : 0);
@@ -184,7 +117,7 @@ const PlannedExpenseForm: React.FC<{
             setPaymentRemaining(0);
             setPaymentAmount(0);
         }
-    }, [paymentPeriod, currentItem]);
+    }, [paymentPeriod, item]);
 
     const generatedFormPeriods = useMemo(() => {
         return generatePeriods({ ...formState, id: '', payments: [] } as PlannedExpense);
@@ -215,11 +148,11 @@ const PlannedExpenseForm: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ ...currentItem, ...formState, periodOverrides, payments: currentItem?.payments || [] } as PlannedExpense);
+        onSave({ ...item, ...formState, periodOverrides, payments: item?.payments || [] } as PlannedExpense);
     };
 
     const handleAddPayment = () => {
-        if (!currentItem?.id || !paymentPeriod || paymentAmount <= 0) return;
+        if (!item?.id || !paymentPeriod || paymentAmount <= 0) return;
         
         if (paymentAmount > paymentRemaining) {
             setPaymentErrors({ amount: `El monto no puede exceder el restante (${formatCurrency(paymentRemaining)}).` });
@@ -236,7 +169,7 @@ const PlannedExpenseForm: React.FC<{
         };
 
         const updatedExpenses = data.plannedExpenses.map(pe => 
-            pe.id === currentItem.id ? { ...pe, payments: [...(pe.payments || []), newPayment] } : pe
+            pe.id === item.id ? { ...pe, payments: [...(pe.payments || []), newPayment] } : pe
         );
         setData({ ...data, plannedExpenses: updatedExpenses });
         setPaymentAmount(0);
@@ -249,7 +182,7 @@ const PlannedExpenseForm: React.FC<{
                 <nav className="-mb-px flex space-x-4" aria-label="Tabs">
                     <button onClick={() => setActiveTab('details')} className={`${activeTab === 'details' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Detalles</button>
                     <button onClick={() => setActiveTab('periods')} className={`${activeTab === 'periods' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Montos por Periodo</button>
-                    {currentItem?.id && <button onClick={() => setActiveTab('payments')} className={`${activeTab === 'payments' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Pagos</button>}
+                    {item?.id && <button onClick={() => setActiveTab('payments')} className={`${activeTab === 'payments' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>Pagos</button>}
                 </nav>
             </div>
             {activeTab === 'details' ? (
@@ -257,13 +190,13 @@ const PlannedExpenseForm: React.FC<{
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Concepto</label>
                         <div className="flex items-center gap-2 mt-1">
-                            <div className="relative" ref={iconPickerContainerRef}>
-                                <button type="button" onClick={() => setIconPickerOpen(prev => !prev)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
+                            <div>
+                                <button type="button" onClick={(e) => setIconPickerAnchor(iconPickerAnchor ? null : e.currentTarget)} className="p-2 border border-gray-300 dark:border-white/20 rounded-md bg-white/50 dark:bg-white/10">
                                     <IconDisplay icon={formState.icon} iconColor={formState.iconColor} className="w-6 h-6" />
                                 </button>
-                                {isIconPickerOpen && <IconPicker onSelect={handleIconSelect} onClose={() => setIconPickerOpen(false)} currentColor={formState.iconColor} />}
+                                {iconPickerAnchor && <IconPicker anchorEl={iconPickerAnchor} onSelect={handleIconSelect} onClose={() => setIconPickerAnchor(null)} currentColor={formState.iconColor} position="left" />}
                             </div>
-                            <select name="conceptId" value={formState.conceptId} onChange={handleChange} className="block w-full rounded-md shadow-sm" disabled={!!currentItem?.id}>
+                            <select name="conceptId" value={formState.conceptId} onChange={handleChange} className="block w-full rounded-md shadow-sm">
                                 <option value="">Seleccione...</option>
                                 {concepts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
@@ -339,7 +272,7 @@ const PlannedExpenseForm: React.FC<{
                         <table className="w-full text-left">
                            <thead><tr className="border-b border-gray-200 dark:border-white/20"><th className="p-2">Periodo</th><th className="p-2">Fecha</th><th className="p-2 text-right">Monto</th></tr></thead>
                            <tbody>
-                               {(currentItem?.payments || []).length > 0 ? (currentItem?.payments || []).map(p => <tr key={p.id}><td className="p-2">{p.period}</td><td className="p-2">{new Date(p.date).toLocaleDateString()}</td><td className="p-2 text-right">{formatCurrency(p.amount)}</td></tr>) : <tr><td colSpan={3} className="text-center p-4 text-gray-500 dark:text-gray-400">No hay pagos registrados.</td></tr>}
+                               {(item?.payments || []).length > 0 ? (item?.payments || []).map(p => <tr key={p.id}><td className="p-2">{p.period}</td><td className="p-2">{new Date(p.date).toLocaleDateString()}</td><td className="p-2 text-right">{formatCurrency(p.amount)}</td></tr>) : <tr><td colSpan={3} className="text-center p-4 text-gray-500 dark:text-gray-400">No hay pagos registrados.</td></tr>}
                            </tbody>
                         </table>
                     </div>
@@ -362,43 +295,30 @@ const PlannedExpenseForm: React.FC<{
     );
 };
 
-const SummaryCard: React.FC<{ title: string; amount: number; colorClass: string; children?: React.ReactNode }> = ({ title, amount, colorClass, children }) => (
-    <GlassCard className={`p-4 flex flex-col justify-between ${colorClass}`}>
-        <div>
-            <div className="flex justify-between items-center text-gray-500 dark:text-gray-200">
-                <h3 className="text-sm font-medium">{title}</h3>
+const SummaryCard: React.FC<{
+    title: string;
+    amount: number;
+    icon: React.ReactElement<{ className?: string }>;
+    colors: {
+        iconBg: string;
+        iconText: string;
+    };
+}> = ({ title, amount, icon, colors }) => (
+    <GlassCard className="p-4 animate-fadeInUp">
+        <div className="flex items-center space-x-3">
+            <div className={`rounded-lg p-2 ${colors.iconBg}`}>
+                {React.cloneElement(icon, { className: `w-6 h-6 ${colors.iconText}` })}
             </div>
-            <p className="mt-1 text-2xl font-semibold">{formatCurrency(amount)}</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
         </div>
-        {children}
+        <div className="mt-2">
+            <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(amount)}</p>
+        </div>
     </GlassCard>
 );
 
-const BalanceProgressCircle: React.FC<{ percentage: number }> = ({ percentage }) => {
-    const isDark = document.documentElement.classList.contains('dark');
-    const data = [
-        { name: 'Used', value: percentage },
-        { name: 'Remaining', value: Math.max(0, 100 - percentage) },
-    ];
-    return (
-        <div className="w-16 h-16 relative">
-            <ResponsiveContainer>
-                <PieChart>
-                    <Pie data={data} cx="50%" cy="50%" innerRadius="80%" outerRadius="100%" startAngle={90} endAngle={-270} dataKey="value" stroke="none">
-                        <Cell fill="#3b82f6" />
-                        <Cell fill={isDark ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)"} />
-                    </Pie>
-                </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-sm font-bold">{Math.round(percentage)}%</span>
-            </div>
-        </div>
-    );
-};
-
 export const PlannedExpenses: React.FC = () => {
-    const { appData: data, setData } = useAuth();
+    const { appData: data, setData, userProfile } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [searchTerm, setSearchTerm] = useState('');
     const location = useLocation();
@@ -407,12 +327,33 @@ export const PlannedExpenses: React.FC = () => {
     const [editingItem, setEditingItem] = useState<{ item: PlannedExpense | null, defaultTab: 'details' | 'payments' | 'periods' }>({ item: null, defaultTab: 'details' });
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [successInfo, setSuccessInfo] = useState<{ title: string; message: string } | null>(null);
-    const [view, setView] = useState<'list' | 'calendar'>('list');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const [selectedDate, setSelectedDate] = useState<Date | null>(today);
+    const [view, setView] = useState<'calendar' | 'list'>('calendar');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'vencidos' | 'urgent' | 'proximos' | 'partial' | 'paid'>('all');
+    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [calendarDate, setCalendarDate] = useState(new Date());
-    const [expandedDueKey, setExpandedDueKey] = useState<string | null>(null);
+
+    const getSummaryCardName = (card: string, defaultName: string) => userProfile?.summaryCardNames?.[card] || defaultName;
+
+    const expenseConcepts = useMemo(() => {
+        if (!data) return [];
+        const movGastoId = 'TM-001'; // GASTO
+        const fijoCostTypeId = 'TC-001'; // Fijo
+        const variableCostTypeId = 'TC-002'; // Variable
+        
+        const filtered = data.concepts.filter(c => 
+            c.movementTypeId === movGastoId && 
+            (c.costTypeId === fijoCostTypeId || c.costTypeId === variableCostTypeId)
+        );
+
+        if (editingItem.item?.conceptId) {
+            const currentConcept = data.concepts.find(c => c.id === editingItem.item!.conceptId);
+            if (currentConcept && !filtered.some(c => c.id === currentConcept.id)) {
+                return [currentConcept, ...filtered].sort((a,b) => a.name.localeCompare(b.name));
+            }
+        }
+        
+        return filtered.sort((a,b) => a.name.localeCompare(b.name));
+    }, [data, editingItem.item]);
 
     useEffect(() => {
         const expenseId = location.state?.openExpenseId;
@@ -451,254 +392,304 @@ export const PlannedExpenses: React.FC = () => {
         setDeleteId(null);
     };
     
-    const { summaryData, filteredExpenses, duesByDate, allDueDates, monthDues } = useMemo(() => {
-        if (!data) return { summaryData: {}, filteredExpenses: [], duesByDate: new Map(), allDueDates: new Map(), monthDues: [] };
-        const month = currentDate.getMonth();
-        const year = currentDate.getFullYear();
-        const startOfMonth = new Date(year, month, 1);
-        const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
+    const { summary, filteredExpenses, duesByDate, selectedDayDues } = useMemo(() => {
+        if (!data) return { 
+            summary: { periodIncome: 0, periodExpenses: 0, periodBalance: 0, pendingInPeriod: 0, totalPlannedForMonth: 0 }, 
+            filteredExpenses: [], 
+            duesByDate: new Map(), 
+            selectedDayDues: [] 
+        };
+        
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-        const incomeThisMonth = data.incomes
+        const periodIncome = data.incomes
             .filter(i => { const d = new Date(i.date); return d >= startOfMonth && d <= endOfMonth; })
             .reduce((sum, i) => sum + Number(i.amount), 0);
 
-        const totalPlannedForMonth = data.plannedExpenses
-            .reduce((sum, pe) => { 
-                const periodStr = `${year}-${(month + 1).toString().padStart(2, '0')}`; 
-                const amountForPeriod = generatePeriods(pe).includes(periodStr) ? (pe.periodOverrides?.[periodStr] ?? pe.amountPerPeriod) : 0;
-                return sum + Number(amountForPeriod);
-            }, 0);
+        const periodDailyExpenses = data.dailyExpenses
+            .filter(e => { const d = new Date(e.date); return d >= startOfMonth && d <= endOfMonth; })
+            .reduce((sum, e) => sum + Number(e.amount), 0);
 
-        const paidThisMonth = data.plannedExpenses
-            .reduce((sum, pe) => sum + (pe.payments || [])
-            .filter(p => { const d = new Date(p.date); return d >= startOfMonth && d <= endOfMonth; })
-            .reduce((pSum, p) => pSum + Number(p.amount), 0), 0);
+        const periodPaidPlannedExpenses = data.plannedExpenses.reduce((sum, expense) => sum + (expense.payments || [])
+                .filter(p => { const d = new Date(p.date); return d >= startOfMonth && d <= endOfMonth; })
+                .reduce((pSum, p) => pSum + Number(p.amount), 0), 0);
 
-        const availableBalance = incomeThisMonth - paidThisMonth;
-        const budgetUsage = incomeThisMonth > 0 ? (totalPlannedForMonth / incomeThisMonth) * 100 : 0;
+        const periodExpenses = periodDailyExpenses + periodPaidPlannedExpenses;
+        const periodBalance = periodIncome - periodExpenses;
+
+        const periodStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`;
+        const totalPlannedForMonth = data.plannedExpenses.reduce((sum, pe) => {
+            const amountForPeriod = generatePeriods(pe).includes(periodStr) ? (pe.periodOverrides?.[periodStr] ?? pe.amountPerPeriod) : 0;
+            return sum + Number(amountForPeriod);
+        }, 0);
+
+        const paidOnPlannedForMonth = data.plannedExpenses.reduce((sum, pe) => {
+            return sum + (pe.payments || [])
+                .filter(p => p.period === periodStr)
+                .reduce((pSum, p) => pSum + Number(p.amount), 0);
+        }, 0);
+        
+        const pendingInPeriod = totalPlannedForMonth - paidOnPlannedForMonth;
+
+        const summary = { periodIncome, periodExpenses, periodBalance, pendingInPeriod, totalPlannedForMonth };
         
         const term = searchTerm.toLowerCase();
-        const allExpensesWithDetails = data.plannedExpenses.map(expense => {
+        let allExpensesWithDetails = data.plannedExpenses.map(expense => {
             const concept = data.concepts.find(c => c.id === expense.conceptId);
+            const category = data.categories.find(c => c.id === concept?.categoryId);
             const nextPeriodToPay = getNextPeriodToPay(expense);
-            const status = getStatusInfo(expense, nextPeriodToPay);
-            return { ...expense, conceptName: concept?.name || 'N/A', status, nextPeriodToPay };
-        }).filter(e => !term || e.conceptName.toLowerCase().includes(term));
+            const amountForPeriod = nextPeriodToPay ? (expense.periodOverrides?.[nextPeriodToPay.period] ?? expense.amountPerPeriod) : 0;
+            const paidInPeriod = nextPeriodToPay ? (expense.payments || []).filter(p => p.period === nextPeriodToPay.period).reduce((s,p) => s + p.amount, 0) : amountForPeriod;
+            
+            const status = getStatusInfo(expense);
+            return { ...expense, concept, category, nextPeriodToPay, amountForPeriod, paidInPeriod, status };
+        }).filter(e => !term || e.concept?.name.toLowerCase().includes(term));
         
-        const dues = new Map<string, (PlannedExpense & { duePeriod: string; amountForPeriod: number })[]>();
-        const allDates = new Map<string, Priority>();
-        
-        data.plannedExpenses.forEach(expense => {
-            const paymentsByPeriod = new Map<string, number>();
-            (expense.payments || []).forEach(p => {
-                paymentsByPeriod.set(p.period, (paymentsByPeriod.get(p.period) || 0) + Number(p.amount));
+        if (statusFilter !== 'all') {
+            allExpensesWithDetails = allExpensesWithDetails.filter(e => {
+                const s = e.status.text;
+                if (statusFilter === 'vencidos') return s === 'Vencido';
+                if (statusFilter === 'urgent') return s === 'Urgente';
+                if (statusFilter === 'proximos') return s === 'Próximo';
+                if (statusFilter === 'partial') return s === 'Parcial';
+                if (statusFilter === 'paid') return s === 'Pagado';
+                return true;
             });
-
+        }
+        
+        if (statusFilter === 'all') {
+            allExpensesWithDetails.sort((a, b) => {
+                if (a.status.priority !== b.status.priority) return a.status.priority - b.status.priority;
+                return a.dueDay - b.dueDay;
+            });
+        }
+        
+        const dues = new Map<string, any[]>();
+        data.plannedExpenses.forEach(expense => {
             const periods = generatePeriods(expense);
-            periods.forEach((period, index) => {
-                const paidAmount = paymentsByPeriod.get(period) || 0;
-                const amountForPeriod = Number(expense.periodOverrides?.[period] ?? expense.amountPerPeriod);
-
-                if (paidAmount < amountForPeriod) {
-                    const [pYear, pMonth] = period.split('-').map(Number);
-                    const dueDate = new Date(pYear, pMonth - 1, expense.dueDay);
+            periods.forEach((period) => {
+                const [pYear, pMonth] = period.split('-').map(Number);
+                if (pYear === calendarDate.getFullYear() && pMonth - 1 === calendarDate.getMonth()) {
+                     const [year, month] = period.split('-').map(Number);
+                    let dueMonth = month;
+                    let dueYear = year;
+                    if (expense.cutOffDay > expense.dueDay) {
+                        dueMonth += 1;
+                        if (dueMonth > 12) {
+                            dueMonth = 1;
+                            dueYear += 1;
+                        }
+                    }
+                    const dueDate = new Date(dueYear, dueMonth - 1, expense.dueDay);
                     const dateKey = toDateKey(dueDate);
 
-                    if (!dues.has(dateKey)) dues.set(dateKey, []);
-                    dues.get(dateKey)!.push({ ...expense, duePeriod: period, amountForPeriod: amountForPeriod });
+                    const concept = data.concepts.find(c => c.id === expense.conceptId);
+                    const amountForPeriod = expense.periodOverrides?.[period] ?? expense.amountPerPeriod;
+                    const paidInPeriod = (expense.payments || []).filter(p => p.period === period).reduce((s,p) => s + p.amount, 0);
                     
-                    const status = getStatusInfo(expense, { period, index });
-                    const existingPriority = allDates.get(dateKey) || Priority.BAJA;
-                    if (priorityOrder[status.priority] > priorityOrder[existingPriority]) {
-                        allDates.set(dateKey, status.priority);
-                    }
+                    const status = getStatusInfo(expense);
+
+                    if (!dues.has(dateKey)) dues.set(dateKey, []);
+                    dues.get(dateKey)!.push({ ...expense, concept, amountForPeriod, paidInPeriod, duePeriod: period, status });
                 }
             });
         });
 
-        // For calendar month view
-        const calendarYear = calendarDate.getFullYear();
-        const calendarMonth = calendarDate.getMonth();
-        const startOfVisibleMonth = new Date(calendarYear, calendarMonth, 1);
-        const endOfVisibleMonth = new Date(calendarYear, calendarMonth + 1, 0);
-        
-        const duesForMonth: { due: PlannedExpense & { duePeriod: string, amountForPeriod: number }, date: Date }[] = [];
-        
-        for (let d = new Date(startOfVisibleMonth); d <= endOfVisibleMonth; d.setDate(d.getDate() + 1)) {
-            const dateKey = toDateKey(d);
-            const dayDues = dues.get(dateKey);
-            if (dayDues) {
-                 dayDues.forEach(due => {
-                     duesForMonth.push({ due, date: new Date(d) });
-                });
-            }
-        }
+        const dayDues = selectedDate ? (dues.get(toDateKey(selectedDate)) || []) : [];
 
         return {
-            summaryData: { incomeThisMonth, availableBalance, totalPlannedForMonth, paidThisMonth, budgetUsage },
+            summary,
             filteredExpenses: allExpensesWithDetails,
             duesByDate: dues,
-            allDueDates: allDates,
-            monthDues: duesForMonth.sort((a, b) => a.date.getTime() - b.date.getTime())
+            selectedDayDues: dayDues
         };
-    }, [data, currentDate, searchTerm, calendarDate]);
+    }, [data, currentDate, searchTerm, calendarDate, statusFilter, selectedDate]);
 
-    if (!data) return <div className="text-center">Cargando...</div>;
-
-    const expenseConcepts = data.concepts.filter(c => data.costTypes.some(ct => ct.id === c.costTypeId && (ct.name === 'Fijo' || ct.name === 'Variable')));
-    
     const renderDayCell = useCallback((date: Date) => {
         const today = new Date();
         today.setHours(0,0,0,0);
         date.setHours(0,0,0,0);
-
         const dateKey = toDateKey(date);
-        const priority = allDueDates.get(dateKey);
+        const duesForDay = duesByDate.get(dateKey) || [];
         
         const isSelected = selectedDate ? date.getTime() === selectedDate.getTime() : false;
         const isToday = date.getTime() === today.getTime();
 
         let cellClass = "relative flex flex-col items-center justify-center h-20 w-full rounded-lg cursor-pointer transition-colors hover:bg-gray-200 dark:hover:bg-white/10";
-        if (isSelected) cellClass += " bg-primary-600/80 dark:bg-primary-700/80";
+        if (isSelected) cellClass += " bg-primary-600/80 dark:bg-primary-700/80 text-white";
         else if (isToday) cellClass += " ring-2 ring-primary-500";
-        
-        let dotColorClass = '';
-        if(priority === Priority.ALTA) dotColorClass = 'bg-red-500';
-        else if (priority === Priority.MEDIA) dotColorClass = 'bg-yellow-500';
-        else if (priority === Priority.BAJA) dotColorClass = 'bg-blue-500';
 
+        const hasDue = duesForDay.length > 0;
+        const isOverdue = hasDue && duesForDay.some(d => d.status.text === 'Vencido');
+        const isUpcoming = hasDue && duesForDay.some(d => ['Próximo', 'Urgente'].includes(d.status.text));
+        
         return (
             <div className={cellClass}>
                 <span>{date.getDate()}</span>
-                {priority && <div className={`absolute bottom-2 w-2 h-2 rounded-full ${dotColorClass}`}></div>}
+                {isOverdue && <div className="absolute bottom-2 w-2 h-2 rounded-full bg-red-500"></div>}
+                {isUpcoming && !isOverdue && <div className="absolute bottom-2 w-2 h-2 rounded-full bg-yellow-500"></div>}
             </div>
         );
-    }, [selectedDate, allDueDates]);
+    }, [selectedDate, duesByDate]);
 
+    const incomeIconName = userProfile?.summaryCardIcons?.income || 'trending-up';
+    const IncomeIconComponent = PREDEFINED_ICONS[incomeIconName]?.icon || TrendingUpIcon;
+
+    const expenseIconName = userProfile?.summaryCardIcons?.expenses || 'trending-down';
+    const ExpenseIconComponent = PREDEFINED_ICONS[expenseIconName]?.icon || TrendingDownIcon;
+
+    const balanceIconName = userProfile?.summaryCardIcons?.balance || 'wallet';
+    const BalanceIconComponent = PREDEFINED_ICONS[balanceIconName]?.icon || WalletIcon;
+
+    const pendingIconName = userProfile?.summaryCardIcons?.pending || 'clock';
+    const PendingIconComponent = PREDEFINED_ICONS[pendingIconName]?.icon || ClockIcon;
+    
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h1 className="text-3xl font-bold">Gastos Planificados</h1>
                 <div className="flex items-center gap-2">
                     <div className="p-1 rounded-lg bg-gray-200 dark:bg-black/20 flex items-center">
-                        <button onClick={() => setView('list')} className={`p-1.5 rounded-md ${view === 'list' ? 'bg-primary-600 text-white' : ''}`}><ListBulletIcon className="w-5 h-5"/></button>
                         <button onClick={() => setView('calendar')} className={`p-1.5 rounded-md ${view === 'calendar' ? 'bg-primary-600 text-white' : ''}`}><CalendarIcon className="w-5 h-5"/></button>
+                        <button onClick={() => setView('list')} className={`p-1.5 rounded-md ${view === 'list' ? 'bg-primary-600 text-white' : ''}`}><ListBulletIcon className="w-5 h-5"/></button>
                     </div>
                     <button onClick={() => handleOpenModal()} className="flex-shrink-0 flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-2 px-4 rounded-lg">
                         <PlusIcon className="w-5 h-5" /> Añadir Gasto
                     </button>
                 </div>
             </div>
-            
-            {view === 'list' ? (
-                <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <SummaryCard title="Ingresos del Mes" amount={summaryData.incomeThisMonth || 0} colorClass="bg-blue-50 dark:bg-blue-900/30" />
-                    <SummaryCard title="Saldo Disponible" amount={summaryData.availableBalance || 0} colorClass="bg-indigo-50 dark:bg-indigo-900/30">
-                        <div className="flex justify-between items-end mt-2">
-                             <p className="text-xs text-indigo-600 dark:text-indigo-300">Comprometido <br/> {formatCurrency(summaryData.totalPlannedForMonth || 0)}</p>
-                            <BalanceProgressCircle percentage={summaryData.budgetUsage || 0} />
-                        </div>
-                    </SummaryCard>
-                    <SummaryCard title="Gastos Totales (Mes)" amount={summaryData.totalPlannedForMonth || 0} colorClass="bg-red-50 dark:bg-red-900/30" />
-                    <SummaryCard title="Gastos Pagados (Mes)" amount={summaryData.paidThisMonth || 0} colorClass="bg-green-50 dark:bg-green-900/30" />
-                </div>
-                <GlassCard className="p-6">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-xl font-bold">Todos los Gastos Planificados</h3>
-                        <input type="text" placeholder="Buscar por concepto..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full sm:w-auto px-3 py-2 rounded-md shadow-sm" />
-                    </div>
-                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead><tr className="border-b border-gray-200 dark:border-white/20"><th className="p-2">Concepto</th><th className="p-2">Monto/Periodo</th><th className="p-2">Próximo Pago</th><th className="p-2">Estado</th><th className="p-2 text-right">Acciones</th></tr></thead>
-                            <tbody>
-                                {filteredExpenses.map(exp => (
-                                    <tr key={exp.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-gray-100/50 dark:hover:bg-white/10">
-                                        <td className="p-2 flex items-center gap-2"><IconDisplay icon={exp.icon} iconColor={exp.iconColor} /><span className="font-medium">{exp.conceptName}</span></td>
-                                        <td className="p-2">{formatCurrency(exp.amountPerPeriod)}</td>
-                                        <td className="p-2">{exp.nextPeriodToPay ? `${exp.nextPeriodToPay.period} (Día ${exp.dueDay})` : 'Completado'}</td>
-                                        <td className="p-2"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${exp.status.color}`}>{exp.status.text}</span></td>
-                                        <td className="p-2 text-right">
-                                            {(exp.status.text === 'Vencido' || exp.status.text === 'Próximo a Vencer') && (
-                                                <button onClick={() => handleOpenModal(exp, 'payments')} className="text-green-500 dark:text-green-400 hover:text-green-600 dark:hover:text-green-300 p-1" title="Registrar Pago">
-                                                    <CurrencyDollarIcon className="w-5 h-5" />
-                                                </button>
-                                            )}
-                                            <button onClick={() => handleOpenModal(exp)} className="text-primary-500 dark:text-primary-400 p-1"><EditIcon className="w-5 h-5"/></button>
-                                            <button onClick={() => handleDelete(exp.id)} className="text-red-500 dark:text-red-400 p-1 ml-2"><DeleteIcon className="w-5 h-5"/></button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </GlassCard>
-                </>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <SummaryCard title={`${getSummaryCardName('income', "Ingresos")} del Mes`} amount={summary.periodIncome} icon={<IncomeIconComponent />} colors={{ iconBg: 'bg-emerald-100 dark:bg-emerald-900/50', iconText: 'text-emerald-600 dark:text-emerald-400' }} />
+                <SummaryCard title={`${getSummaryCardName('expenses', "Gastos")} del Mes`} amount={summary.periodExpenses} icon={<ExpenseIconComponent />} colors={{ iconBg: 'bg-red-100 dark:bg-red-900/50', iconText: 'text-red-600 dark:text-red-400' }} />
+                <SummaryCard title={`${getSummaryCardName('balance', "Disponible")} del Mes`} amount={summary.periodBalance} icon={<BalanceIconComponent />} colors={{ iconBg: 'bg-blue-100 dark:bg-blue-900/50', iconText: 'text-blue-600 dark:text-blue-400' }} />
+                <SummaryCard title={`${getSummaryCardName('pending', "Pendiente")} del Mes`} amount={summary.pendingInPeriod} icon={<PendingIconComponent />} colors={{ iconBg: 'bg-amber-100 dark:bg-amber-900/50', iconText: 'text-amber-600 dark:text-amber-400' }} />
+            </div>
+
+            {view === 'calendar' ? (
+                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
                         <CalendarGrid
-                           currentDate={calendarDate}
-                           onDateClick={(date) => setSelectedDate(date)}
-                           renderDay={renderDayCell}
-                           onPrevMonth={() => setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                           onNextMonth={() => setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                            currentDate={calendarDate}
+                            onDateClick={(date) => setSelectedDate(date)}
+                            renderDay={renderDayCell}
+                            onPrevMonth={() => setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                            onNextMonth={() => setCalendarDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
                         />
                     </div>
-                    <GlassCard className="p-4 flex flex-col h-full">
-                        <h3 className="text-lg font-bold mb-4">Vencimientos de {calendarDate.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}</h3>
-                        <div className="flex-grow overflow-y-auto pr-2 space-y-2">
-                            {monthDues.length > 0 ? monthDues.map(({ due, date }) => {
-                                const concept = data.concepts.find(c => c.id === due.conceptId);
-                                const uniqueKey = `${due.id}-${date.toISOString()}`;
-                                const isExpanded = expandedDueKey === uniqueKey;
-                                const paymentsForPeriod = (due.payments || []).filter(p => p.period === due.duePeriod);
-                                return (
-                                <div key={uniqueKey} className="bg-gray-100 dark:bg-black/20 rounded-lg">
-                                    <div className="p-2 flex flex-col">
-                                        <div 
-                                            className="flex justify-between items-center text-sm cursor-pointer" 
-                                            onClick={() => setExpandedDueKey(isExpanded ? null : uniqueKey)}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-primary-600 dark:text-primary-300">{date.getDate()}</span>
-                                                <span className="font-semibold">{concept?.name}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold">{formatCurrency(due.amountForPeriod)}</span>
-                                                <ChevronDownIcon className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                            </div>
-                                        </div>
-                                         <div className="flex justify-end gap-2 text-xs mt-2">
-                                            <button onClick={() => handleOpenModal(due, 'payments')} className="bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded-md">Pagar / Editar</button>
-                                        </div>
+
+                    <GlassCard className="p-4 flex flex-col">
+                        <h3 className="text-lg font-bold mb-4">
+                           {selectedDate ? `Vencimientos del ${selectedDate.toLocaleDateString('es-MX', {day: 'numeric', month: 'long'})}` : 'Seleccione una fecha'}
+                        </h3>
+                         <div className="flex-grow overflow-y-auto pr-2 space-y-2 mb-4">
+                           {selectedDayDues.length > 0 ? selectedDayDues.map(due => (
+                                <div key={`${due.id}-${due.duePeriod}`} className="p-2 bg-gray-100 dark:bg-black/20 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <p className="text-sm font-medium">{due.concept.name}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{due.duePeriod}</p>
                                     </div>
-                                    {isExpanded && (
-                                        <div className="mt-2 p-2 border-t border-gray-200 dark:border-white/20 text-xs">
-                                            <p className="font-semibold mb-1">Pagos para periodo {due.duePeriod}:</p>
-                                            {paymentsForPeriod.length > 0 ? (
-                                                <ul className="space-y-1 list-disc list-inside pl-2">
-                                                    {paymentsForPeriod.map(p => (
-                                                        <li key={p.id}>
-                                                            {new Date(p.date).toLocaleDateString()}: <span className="font-semibold">{formatCurrency(p.amount)}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : <p className="text-gray-500 dark:text-gray-400 italic">No hay pagos registrados para este periodo.</p>}
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-sm font-bold ${due.status.text === 'Vencido' ? 'text-red-500' : ''}`}>{formatCurrency(due.amountForPeriod - due.paidInPeriod)}</span>
+                                        <button onClick={() => handleOpenModal(due, 'payments')} className="text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400"><EditIcon className="w-4 h-4" /></button>
+                                    </div>
                                 </div>
-                            )}) : <p className="text-gray-500 dark:text-gray-400 text-center text-sm pt-4">No hay vencimientos para este mes.</p>}
+                            )) : <p className="text-gray-500 dark:text-gray-400 text-center text-sm pt-4">No hay vencimientos para esta fecha.</p>}
                         </div>
                     </GlassCard>
                 </div>
+            ) : (
+                <>
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                         <input type="search" placeholder="Buscar gasto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full md:w-auto px-3 py-2 rounded-lg shadow-sm" />
+                         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)} className="w-full md:w-auto rounded-lg shadow-sm">
+                             <option value="all">Todos los estados</option>
+                             <option value="vencidos">Vencidos</option>
+                             <option value="urgent">Urgentes</option>
+                             <option value="proximos">Próximos a Vencer</option>
+                             <option value="partial">Pagos Parciales</option>
+                             <option value="paid">Pagados</option>
+                         </select>
+                     </div>
+                    <GlassCard className="p-4 sm:p-6">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-gray-300 dark:border-white/20">
+                                        <th className="p-3">Concepto</th>
+                                        <th className="p-3">Categoría</th>
+                                        <th className="p-3 text-right">Monto</th>
+                                        <th className="p-3 text-right">Pagado</th>
+                                        <th className="p-3 text-right">Restante</th>
+                                        <th className="p-3 text-center">Estado</th>
+                                        <th className="p-3 text-center">Vence</th>
+                                        <th className="p-3 text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredExpenses.map(exp => {
+                                        const remaining = exp.amountForPeriod - exp.paidInPeriod;
+                                        return (
+                                        <tr key={exp.id} className="border-b border-gray-200 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/10">
+                                            <td className="p-3 font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    <IconDisplay icon={exp.icon} iconColor={exp.iconColor} className="w-5 h-5" />
+                                                    <span>{exp.concept?.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="p-3 text-sm text-gray-500 dark:text-gray-400">{exp.category?.name}</td>
+                                            <td className="p-3 text-right">{formatCurrency(exp.amountForPeriod)}</td>
+                                            <td className="p-3 text-right text-green-600 dark:text-green-400">{formatCurrency(exp.paidInPeriod)}</td>
+                                            <td className={`p-3 text-right font-semibold ${remaining > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{formatCurrency(remaining)}</td>
+                                            <td className="p-3 text-center">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${exp.status.color}`}>
+                                                    {exp.status.text}
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-center text-sm">Día {exp.dueDay}</td>
+                                            <td className="p-3 text-right">
+                                                <button onClick={() => handleOpenModal(exp, 'payments')} className="text-green-500 p-1" title="Pagar / Ver Abonos"><CurrencyDollarIcon className="w-5 h-5"/></button>
+                                                <button onClick={() => handleOpenModal(exp, 'details')} className="text-primary-500 p-1 ml-2" title="Editar"><EditIcon className="w-5 h-5"/></button>
+                                                <button onClick={() => handleDelete(exp.id)} className="text-red-500 p-1 ml-2" title="Eliminar"><DeleteIcon className="w-5 h-5"/></button>
+                                            </td>
+                                        </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </GlassCard>
+                </>
             )}
             
-            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingItem.item ? 'Editar Gasto Planificado' : 'Nuevo Gasto Planificado'}>
-                <PlannedExpenseForm item={editingItem.item} concepts={expenseConcepts} onSave={handleSave} onCancel={handleCloseModal} data={data} setData={setData} defaultActiveTab={editingItem.defaultTab} />
+            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingItem.item?.id ? 'Editar Gasto Planificado' : 'Nuevo Gasto Planificado'}>
+                <PlannedExpenseForm 
+                    item={editingItem.item} 
+                    concepts={expenseConcepts} 
+                    onSave={handleSave} 
+                    onCancel={handleCloseModal} 
+                    data={data!} 
+                    setData={setData}
+                    defaultActiveTab={editingItem.defaultTab}
+                />
             </Modal>
-            <ConfirmationModal isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={confirmDelete} title="Eliminar Gasto" message="¿Estás seguro? Se eliminará el gasto y todos sus pagos registrados." />
-            <SuccessToast isOpen={!!successInfo} onClose={() => setSuccessInfo(null)} title={successInfo?.title || ''} message={successInfo?.message || ''} />
+
+            <ConfirmationModal 
+                isOpen={!!deleteId}
+                onClose={() => setDeleteId(null)}
+                onConfirm={confirmDelete}
+                title="Confirmar Eliminación"
+                message="¿Estás seguro de eliminar este gasto planificado y todos sus pagos asociados? Esta acción es irreversible."
+            />
+
+             <SuccessToast 
+                isOpen={!!successInfo}
+                onClose={() => setSuccessInfo(null)}
+                title={successInfo?.title || ''}
+                message={successInfo?.message || ''}
+            />
         </div>
     );
 };

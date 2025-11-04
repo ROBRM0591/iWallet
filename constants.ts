@@ -17,12 +17,13 @@ export const COLOR_PALETTES = [
 export const BLANK_DATA: AppData = {
   categories: [],
   costTypes: [
-    { id: 'TC-001', name: 'Fijo', movementTypeId: 'TM-001' },
-    { id: 'TC-002', name: 'Variable', movementTypeId: 'TM-001' },
+    { id: 'TC-001', name: 'Fijo', movementTypeId: 'TM-001', icon: 'tag', iconColor: 'text-blue-500 dark:text-blue-400' },
+    { id: 'TC-002', name: 'Variable', movementTypeId: 'TM-001', icon: 'tag', iconColor: 'text-purple-500 dark:text-purple-400' },
+    { id: 'TC-003', name: 'Corriente', movementTypeId: 'TM-001', icon: 'tag', iconColor: 'text-teal-500 dark:text-teal-400' },
   ],
   movementTypes: [
-    { id: 'TM-001', name: MovementTypeName.GASTO },
-    { id: 'TM-002', name: MovementTypeName.INGRESO },
+    { id: 'TM-001', name: MovementTypeName.GASTO, icon: 'arrow-down', iconColor: 'text-red-500 dark:text-red-400' },
+    { id: 'TM-002', name: MovementTypeName.INGRESO, icon: 'arrow-up', iconColor: 'text-green-500 dark:text-green-400' },
   ],
   concepts: [],
   dailyExpenses: [],
@@ -37,109 +38,17 @@ export const BLANK_DATA: AppData = {
 };
 
 export const DEMO_DATA: AppData = {
-  categories: [
-    // Gastos Fijos
-    { id: 'CA-001', name: 'Vivienda', movementTypeId: 'TM-001', costTypeId: 'TC-001', description: 'Gastos relacionados con el hogar y la renta.' },
-    { id: 'CA-002', name: 'Servicios', movementTypeId: 'TM-001', costTypeId: 'TC-001', description: 'Pagos de servicios básicos como luz, agua, gas, etc.' },
-    { id: 'CA-003', name: 'Deudas y Créditos', movementTypeId: 'TM-001', costTypeId: 'TC-001' },
-    { id: 'CA-004', name: 'Suscripciones', movementTypeId: 'TM-001', costTypeId: 'TC-001' },
-    { id: 'CA-005', name: 'Educación', movementTypeId: 'TM-001', costTypeId: 'TC-001' },
-    { id: 'CA-006', name: 'Seguros', movementTypeId: 'TM-001', costTypeId: 'TC-001' },
-    
-    // Gastos Variables y Diarios
-    { id: 'CA-007', name: 'Alimentación', movementTypeId: 'TM-001', costTypeId: 'TC-002', description: 'Compras de supermercado, restaurantes y comida a domicilio.' },
-    { id: 'CA-008', name: 'Transporte', movementTypeId: 'TM-001', costTypeId: 'TC-002' },
-    { id: 'CA-009', name: 'Salud y Cuidado Personal', movementTypeId: 'TM-001', costTypeId: 'TC-002' },
-    { id: 'CA-010', name: 'Entretenimiento y Ocio', movementTypeId: 'TM-001', costTypeId: 'TC-002' },
-    { id: 'CA-011', name: 'Compras', movementTypeId: 'TM-001', costTypeId: 'TC-002' },
-    { id: 'CA-012', name: 'Familia y Mascotas', movementTypeId: 'TM-001', costTypeId: 'TC-002' },
-    { id: 'CA-013', name: 'Otros Gastos', movementTypeId: 'TM-001', costTypeId: 'TC-002' },
-  ],
+  categories: [],
   costTypes: [
-    { id: 'TC-001', name: 'Fijo', movementTypeId: 'TM-001' },
-    { id: 'TC-002', name: 'Variable', movementTypeId: 'TM-001' },
+    { id: 'TC-001', name: 'Fijo', movementTypeId: 'TM-001', icon: 'tag', iconColor: 'text-blue-500 dark:text-blue-400' },
+    { id: 'TC-002', name: 'Variable', movementTypeId: 'TM-001', icon: 'tag', iconColor: 'text-purple-500 dark:text-purple-400' },
+    { id: 'TC-003', name: 'Corriente', movementTypeId: 'TM-001', icon: 'tag', iconColor: 'text-teal-500 dark:text-teal-400' },
   ],
   movementTypes: [
-    { id: 'TM-001', name: MovementTypeName.GASTO },
-    { id: 'TM-002', name: MovementTypeName.INGRESO },
+    { id: 'TM-001', name: MovementTypeName.GASTO, icon: 'arrow-down', iconColor: 'text-red-500 dark:text-red-400' },
+    { id: 'TM-002', name: MovementTypeName.INGRESO, icon: 'arrow-up', iconColor: 'text-green-500 dark:text-green-400' },
   ],
-  concepts: [
-    // Vivienda (Fijo)
-    { id: 'CO-001', name: 'Renta', movementTypeId: 'TM-001', categoryId: 'CA-001', costTypeId: 'TC-001', description: 'Pago mensual del alquiler del departamento/casa.' },
-    { id: 'CO-002', name: 'Hipoteca', movementTypeId: 'TM-001', categoryId: 'CA-001', costTypeId: 'TC-001' },
-    
-    // Servicios (Fijo)
-    { id: 'CO-003', name: 'CFE (Luz)', movementTypeId: 'TM-001', categoryId: 'CA-002', costTypeId: 'TC-001', description: 'Recibo de luz bimestral.' },
-    { id: 'CO-004', name: 'Agua y Drenaje', movementTypeId: 'TM-001', categoryId: 'CA-002', costTypeId: 'TC-001' },
-    { id: 'CO-005', name: 'Gas Natural', movementTypeId: 'TM-001', categoryId: 'CA-002', costTypeId: 'TC-001' },
-    { id: 'CO-006', name: 'Internet (Telmex/TotalPlay)', movementTypeId: 'TM-001', categoryId: 'CA-002', costTypeId: 'TC-001' },
-    { id: 'CO-007', name: 'Plan Celular (Telcel/AT&T)', movementTypeId: 'TM-001', categoryId: 'CA-002', costTypeId: 'TC-001' },
-
-    // Deudas y Créditos (Fijo)
-    { id: 'CO-008', name: 'TDC Nu', movementTypeId: 'TM-001', categoryId: 'CA-003', costTypeId: 'TC-001' },
-    { id: 'CO-009', name: 'TDC BBVA', movementTypeId: 'TM-001', categoryId: 'CA-003', costTypeId: 'TC-001' },
-    { id: 'CO-010', name: 'TDC RappiCard', movementTypeId: 'TM-001', categoryId: 'CA-003', costTypeId: 'TC-001' },
-    { id: 'CO-011', name: 'Préstamo Personal', movementTypeId: 'TM-001', categoryId: 'CA-003', costTypeId: 'TC-001' },
-
-    // Suscripciones (Fijo)
-    { id: 'CO-012', name: 'Netflix', movementTypeId: 'TM-001', categoryId: 'CA-004', costTypeId: 'TC-001' },
-    { id: 'CO-013', name: 'Spotify', movementTypeId: 'TM-001', categoryId: 'CA-004', costTypeId: 'TC-001' },
-    { id: 'CO-014', name: 'Amazon Prime', movementTypeId: 'TM-001', categoryId: 'CA-004', costTypeId: 'TC-001' },
-    { id: 'CO-015', name: 'Xbox Game Pass / PS Plus', movementTypeId: 'TM-001', categoryId: 'CA-004', costTypeId: 'TC-001' },
-    { id: 'CO-016', name: 'iCloud / Google One', movementTypeId: 'TM-001', categoryId: 'CA-004', costTypeId: 'TC-001' },
-
-    // Educación (Fijo)
-    { id: 'CO-017', name: 'Colegiatura', movementTypeId: 'TM-001', categoryId: 'CA-005', costTypeId: 'TC-001' },
-    { id: 'CO-018', name: 'Curso de Idiomas', movementTypeId: 'TM-001', categoryId: 'CA-005', costTypeId: 'TC-001' },
-
-    // Seguros (Fijo)
-    { id: 'CO-019', name: 'Seguro de Auto', movementTypeId: 'TM-001', categoryId: 'CA-006', costTypeId: 'TC-001' },
-    { id: 'CO-020', name: 'Seguro de Gastos Médicos', movementTypeId: 'TM-001', categoryId: 'CA-006', costTypeId: 'TC-001' },
-
-    // Alimentación (Variable)
-    { id: 'CO-021', name: 'Supermercado (Walmart/HEB/Soriana)', movementTypeId: 'TM-001', categoryId: 'CA-007', costTypeId: 'TC-002' },
-    { id: 'CO-022', name: 'Restaurantes y Cafés', movementTypeId: 'TM-001', categoryId: 'CA-007', costTypeId: 'TC-002' },
-    { id: 'CO-023', name: 'Comida a Domicilio (Uber Eats/Rappi)', movementTypeId: 'TM-001', categoryId: 'CA-007', costTypeId: 'TC-002' },
-
-    // Transporte (Variable)
-    { id: 'CO-024', name: 'Gasolina', movementTypeId: 'TM-001', categoryId: 'CA-008', costTypeId: 'TC-002' },
-    { id: 'CO-025', name: 'Transporte por App (Uber/Didi)', movementTypeId: 'TM-001', categoryId: 'CA-008', costTypeId: 'TC-002' },
-    { id: 'CO-026', name: 'Transporte Público', movementTypeId: 'TM-001', categoryId: 'CA-008', costTypeId: 'TC-002' },
-    { id: 'CO-027', name: 'Mantenimiento de Auto', movementTypeId: 'TM-001', categoryId: 'CA-008', costTypeId: 'TC-002' },
-
-    // Salud y Cuidado Personal (Variable)
-    { id: 'CO-028', name: 'Farmacia', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
-    { id: 'CO-030', name: 'Gimnasio', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
-    { id: 'CO-031', name: 'Corte de Pelo / Barbería', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
-    { id: 'CO-029', name: 'Consulta Médica', movementTypeId: 'TM-001', categoryId: 'CA-009', costTypeId: 'TC-002' },
-
-    // Entretenimiento y Ocio (Variable)
-    { id: 'CO-032', name: 'Cine', movementTypeId: 'TM-001', categoryId: 'CA-010', costTypeId: 'TC-002' },
-    { id: 'CO-033', name: 'Salidas con Amigos / Bares', movementTypeId: 'TM-001', categoryId: 'CA-010', costTypeId: 'TC-002' },
-    { id: 'CO-044', name: 'Gastos Hormiga (Antojos, etc.)', movementTypeId: 'TM-001', categoryId: 'CA-013', costTypeId: 'TC-002' },
-    { id: 'CO-034', name: 'Conciertos y Eventos', movementTypeId: 'TM-001', categoryId: 'CA-010', costTypeId: 'TC-002' },
-    { id: 'CO-035', name: 'Hobbies', movementTypeId: 'TM-001', categoryId: 'CA-010', costTypeId: 'TC-002' },
-
-    // Compras (Variable)
-    { id: 'CO-036', name: 'Ropa y Calzado', movementTypeId: 'TM-001', categoryId: 'CA-011', costTypeId: 'TC-002' },
-    { id: 'CO-037', name: 'Tecnología y Gadgets', movementTypeId: 'TM-001', categoryId: 'CA-011', costTypeId: 'TC-002' },
-    { id: 'CO-038', name: 'Hogar y Decoración', movementTypeId: 'TM-001', categoryId: 'CA-011', costTypeId: 'TC-002' },
-
-    // Familia y Mascotas (Variable)
-    { id: 'CO-039', name: 'Artículos para Bebé / Niños', movementTypeId: 'TM-001', categoryId: 'CA-012', costTypeId: 'TC-002' },
-    { id: 'CO-040', name: 'Comida y Juguetes para Mascota', movementTypeId: 'TM-001', categoryId: 'CA-012', costTypeId: 'TC-002' },
-    { id: 'CO-041', name: 'Veterinario', movementTypeId: 'TM-001', categoryId: 'CA-012', costTypeId: 'TC-002' },
-
-    // Otros Gastos (Variable)
-    { id: 'CO-042', name: 'Regalos', movementTypeId: 'TM-001', categoryId: 'CA-013', costTypeId: 'TC-002' },
-    { id: 'CO-043', name: 'Donaciones', movementTypeId: 'TM-001', categoryId: 'CA-013', costTypeId: 'TC-002' },
-    
-    // Ingresos (Sin Categoría)
-    { id: 'CO-045', name: 'Nómina', movementTypeId: 'TM-002', categoryId: '', costTypeId: ''},
-    { id: 'CO-046', name: 'Honorarios / Freelance', movementTypeId: 'TM-002', categoryId: '', costTypeId: ''},
-    { id: 'CO-047', name: 'Bonos / Aguinaldo', movementTypeId: 'TM-002', categoryId: '', costTypeId: ''},
-    { id: 'CO-048', name: 'Ingreso Extra', movementTypeId: 'TM-002', categoryId: '', costTypeId: ''},
-  ],
+  concepts: [],
   dailyExpenses: [],
   incomes: [],
   plannedExpenses: [],

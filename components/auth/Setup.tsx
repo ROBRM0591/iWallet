@@ -8,12 +8,12 @@ import { WalletIcon, EyeIcon, EyeSlashIcon } from '../Icons';
 export const Setup: React.FC = () => {
     const [step, setStep] = useState(1);
     const [profileData, setProfileData] = useState({
-        username: '',
-        email: '',
-        pin: '',
-        confirmPin: '',
-        securityAnswer1: '',
-        securityAnswer2: '',
+        username: 'ROB-RM',
+        email: 'r.medina0318@icoud.com',
+        pin: '123456',
+        confirmPin: '123456',
+        securityAnswer1: '2025-01-01',
+        securityAnswer2: '123456',
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const { setupAccount } = useAuth();
@@ -83,14 +83,28 @@ export const Setup: React.FC = () => {
             try {
                 const content = e.target?.result as string;
                 const parsedData: AppData = JSON.parse(content);
-                // Simple validation
-                if ('categories' in parsedData && 'concepts' in parsedData) {
+                
+                const requiredKeys: (keyof AppData)[] = [
+                    'movementTypes', 'costTypes', 'categories', 'concepts', 
+                    'dailyExpenses', 'plannedExpenses', 'incomes', 
+                    'monthlyBudgets', 'savingsGoals', 'notifications'
+                ];
+        
+                const hasAllKeys = requiredKeys.every(key => key in parsedData);
+                const areArraysCorrect = requiredKeys.slice(0, -1).every(key => Array.isArray((parsedData as any)[key]));
+                const isNotificationsObject = typeof parsedData.notifications === 'object' && 
+                                            parsedData.notifications !== null && 
+                                            'defaultReminderDays' in parsedData.notifications && 
+                                            'defaultReminderTime' in parsedData.notifications;
+
+                if (hasAllKeys && areArraysCorrect && isNotificationsObject) {
                     handleFinalSetup(parsedData);
                 } else {
-                    throw new Error('Archivo de respaldo inválido.');
+                    throw new Error('Archivo de respaldo inválido o con formato incorrecto.');
                 }
             } catch (error) {
-                setErrors({ general: 'El archivo seleccionado no es un respaldo válido.' });
+                const errorMessage = error instanceof Error ? error.message : 'El archivo seleccionado no es un respaldo válido.';
+                setErrors({ general: errorMessage });
             }
         };
         reader.readAsText(file);
@@ -104,7 +118,7 @@ export const Setup: React.FC = () => {
                     <h1 className="text-3xl font-bold ml-3 text-gray-900 dark:text-white">iWallet</h1>
                 </div>
 
-                <div className="bg-white dark:bg-white/10 backdrop-blur-xl border border-gray-200 dark:border-white/20 rounded-2xl shadow-xl p-8 text-gray-900 dark:text-white">
+                <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl rounded-2xl border border-white/30 dark:border-slate-700/80 shadow-2xl p-8 text-gray-900 dark:text-white">
                     {step === 1 ? (
                         <>
                             <h2 className="text-2xl font-bold text-center mb-1">Crea tu Cuenta Local</h2>
@@ -137,7 +151,7 @@ export const Setup: React.FC = () => {
                                 <p className="text-sm text-gray-600 dark:text-gray-300">Preguntas de Seguridad (para recuperación)</p>
                                 
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">¿En qué fecha inició el noviazgo con tu esposa?</label>
+                                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Ingresa Fecha Importante</label>
                                     <input type="date" name="securityAnswer1" value={profileData.securityAnswer1} onChange={handleChange} className="w-full px-4 py-2 rounded-md mt-1" />
                                      {errors.securityAnswer1 && <p className="text-red-500 dark:text-red-400 text-xs mt-1">{errors.securityAnswer1}</p>}
                                 </div>
@@ -153,7 +167,7 @@ export const Setup: React.FC = () => {
                                 </div>
 
                                 {errors.general && <p className="text-red-500 dark:text-red-400 text-sm text-center">{errors.general}</p>}
-                                <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-4 rounded-lg transition">Siguiente</button>
+                                <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-4 rounded-lg transition">Entrar</button>
                             </form>
                         </>
                     ) : (
