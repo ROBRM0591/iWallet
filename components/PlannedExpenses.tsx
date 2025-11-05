@@ -337,12 +337,11 @@ export const PlannedExpenses: React.FC = () => {
     const expenseConcepts = useMemo(() => {
         if (!data) return [];
         const movGastoId = 'TM-001'; // GASTO
-        const fijoCostTypeId = 'TC-001'; // Fijo
-        const variableCostTypeId = 'TC-002'; // Variable
+        const corrienteCostTypeId = data.costTypes.find(ct => ct.name === 'Corriente')?.id;
         
         const filtered = data.concepts.filter(c => 
             c.movementTypeId === movGastoId && 
-            (c.costTypeId === fijoCostTypeId || c.costTypeId === variableCostTypeId)
+            c.costTypeId !== corrienteCostTypeId
         );
 
         if (editingItem.item?.conceptId) {

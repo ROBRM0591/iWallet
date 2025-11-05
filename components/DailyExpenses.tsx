@@ -136,16 +136,10 @@ export const DailyExpenses: React.FC = () => {
 
     const expenseConcepts = useMemo(() => {
         const movGastoId = 'TM-001'; // GASTO
-        // User requested 'Corriente', but it might not exist. Fallback to 'Variable'.
-        const corrienteCostType = data.costTypes.find(ct => ct.name === 'Corriente');
-        const targetCostTypeId = corrienteCostType ? corrienteCostType.id : 'TC-002'; // 'TC-002' is 'Variable'
+        const corrienteCostTypeId = data.costTypes.find(ct => ct.name === 'Corriente')?.id;
+        if (!data.movementTypes.some(m => m.id === movGastoId) || !corrienteCostTypeId) return [];
 
-        if (!data.movementTypes.some(m => m.id === movGastoId) || !data.costTypes.some(ct => ct.id === targetCostTypeId)) return [];
-        
-        return data.concepts.filter(c => 
-            c.movementTypeId === movGastoId && 
-            c.costTypeId === targetCostTypeId
-        );
+        return data.concepts.filter(c => c.movementTypeId === movGastoId && c.costTypeId === corrienteCostTypeId);
     }, [data]);
 
     const incomeIconName = userProfile?.summaryCardIcons?.income || 'trending-up';
